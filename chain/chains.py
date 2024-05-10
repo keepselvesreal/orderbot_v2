@@ -4,7 +4,7 @@ from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
-from .tools import tools, call_tools
+from .tools import tools, determine_tool_usage
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -49,13 +49,11 @@ def get_session_history(session_id: str) -> BaseChatMessageHistory:
         store[session_id] = ChatMessageHistory()
     return store[session_id]
 
-runnable_with_tools = prompt | model.bind_tools(tools)
+chain_with_tools = prompt | model.bind_tools(tools) | determine_tool_usage
 
-with_message_history = RunnableWithMessageHistory(
-    runnable_with_tools,
+chain_with_tools_n_history  = RunnableWithMessageHistory(
+    chain_with_tools,
     get_session_history,
     input_messages_key="input",
     history_messages_key="chat_history",
 )
-
-chain_with_message_n_tools = with_message_history | call_tools
