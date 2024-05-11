@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Product, Order, OrderItem, OrderStatusChange
+from .models import Product, Order, OrderItem, OrderStatus
 
 
 class ProductOrderItemInline(admin.StackedInline):
@@ -19,8 +19,8 @@ class OrderItemInline(admin.StackedInline):
     model = OrderItem
     extra = 1  # 기본적으로 보여질 빈 폼의 수
 
-class OrderStatusChangeInline(admin.StackedInline):
-    model = OrderStatusChange
+class OrderStatusInline(admin.StackedInline):
+    model = OrderStatus
     extra = 1
 
 @admin.register(Order)
@@ -28,11 +28,11 @@ class OrderAdmin(admin.ModelAdmin):
     list_display = ['id', 'user', 'created_at', 'updated_at']
     list_filter = ['created_at', 'updated_at']
     search_fields = ["user__username"]
-    inlines = [OrderItemInline, OrderStatusChangeInline]
+    inlines = [OrderItemInline, OrderStatusInline]
 
 
-@admin.register(OrderStatusChange)
-class OrderStatusChangeAdmin(admin.ModelAdmin):
+@admin.register(OrderStatus)
+class OrderStatusAdmin(admin.ModelAdmin):
     list_display = ['order', 'status', 'changed_at']
     list_filter = ['status', 'changed_at']
     search_fields = ["order__user__username"]

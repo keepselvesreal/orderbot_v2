@@ -16,8 +16,9 @@ class ChatConsumer(WebsocketConsumer):
     def receive(self, text_data):
         print(text_data)
         text_data_json = json.loads(text_data)
+        user = text_data_json["user_id"]
         message = text_data_json["message"]
-        response_message = self.orderbot_response(message)
+        response_message = self.orderbot_response(user, message)
         now = timezone.now()
         
         self.send(text_data=json.dumps(
@@ -26,9 +27,12 @@ class ChatConsumer(WebsocketConsumer):
              "user": self.user.username} # User Object인 듯
             ))
         
-    def orderbot_response(self, message):
-        response = chain_with_tools_n_history.invoke(
-            {"input": message},
-            config={"configurable": {"session_id": "test_240510-6"}}
-        )
-        return response
+    def orderbot_response(self, user, message):
+        try:
+            response = chain_with_tools_n_history.invoke(
+                {"user_id": user, "input": message},
+                config={"configurable": {"session_id": "test_240511-1"}}
+            )
+            return response
+        except Exception as e:
+            return str(e)

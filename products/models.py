@@ -15,9 +15,17 @@ class Order(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    order_status = models.ForeignKey('OrderStatus', on_delete=models.SET_NULL, null=True, related_name='orders')
     
     def __str__(self):
         return f"Order {self.id} by {self.user.username}"
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "status": self.status,
+            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        }
 
 
 class OrderItem(models.Model):
@@ -30,9 +38,9 @@ class OrderItem(models.Model):
         return f"{self.quantity} x {self.product.product_name} at {self.price} each"
 
 
-class OrderStatusChange(models.Model):
+class OrderStatus(models.Model):
     STATUS_CHOICES = (
-        ('order', '주문'),
+        ('order', '주문 완료'),
         ('payment_completed', '입금 완료'),
         ('order_changed', '주문 변경'),
         ('order_canceled', '주문 취소'),

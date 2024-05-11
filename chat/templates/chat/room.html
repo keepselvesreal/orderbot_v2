@@ -49,7 +49,7 @@
 
             const data = {
                 message: message,
-                user: requestUser,
+                user_id: userId,
                 datetime: new Date().toISOString()
             };
             chatSocket.send(JSON.stringify(data));

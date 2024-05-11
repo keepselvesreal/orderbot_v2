@@ -35,7 +35,7 @@ prompt = ChatPromptTemplate.from_messages(
             "이전 대화와 현재 고객이 입력한 메시지 모두를 꼼꼼히 파악하여 답변해줘."
         ),
         MessagesPlaceholder(variable_name="chat_history"),
-        ("human", "{input}"),
+        ("human", "사용자 ID: {user_id}\n사용자 입력 메시지{input}"),
 
     ]
 )
