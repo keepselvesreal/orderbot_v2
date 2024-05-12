@@ -1,14 +1,17 @@
 from langchain_core.tools import tool
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import Runnable
+from django.contrib.auth.models import User
 from django.db.models import Prefetch
 from products.models import Order, OrderStatus
 
 @tool
-def get_recent_orders_by_status(user, status):
+def get_recent_orders_by_status(user_id, status):
     """
     Retrieve the three most recent orders with a specific status for the given user.
     """
+
+    user = User.objects.get(id=user_id)
 
     recent_orders = Order.objects.filter(
         user=user,

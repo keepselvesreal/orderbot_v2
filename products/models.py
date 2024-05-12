@@ -23,7 +23,7 @@ class Order(models.Model):
     def to_dict(self):
         return {
             "id": self.id,
-            "status": self.status,
+            "status": str(self.order_status) if self.order_status else None,
             "created_at": self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
         }
 
@@ -47,7 +47,7 @@ class OrderStatus(models.Model):
     )
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='status_changes')
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='order')
     changed_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
