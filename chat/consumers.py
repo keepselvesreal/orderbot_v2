@@ -1,8 +1,11 @@
 import json
 from channels.generic.websocket import WebsocketConsumer
 from django.utils import timezone
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import QuerySet
 
-from chain.chains import chain_with_tools_n_history
+from chain.chains import full_chain # chain_with_tools_n_history
+
 
 class ChatConsumer(WebsocketConsumer):
     def connect(self):
@@ -29,10 +32,20 @@ class ChatConsumer(WebsocketConsumer):
         
     def orderbot_response(self, user, message):
         try:
-            response = chain_with_tools_n_history.invoke(
+            response = full_chain.invoke(
                 {"user_id": user, "input": message},
-                config={"configurable": {"session_id": "test_240511-1"}}
+                config={"configurable": {"session_id": "test_240514-3"}}
             )
+            print("full chain 출력: ", response)
+            if isinstance(response, QuerySet):
+                response = [order.to_dict() for order in response]
+            response = json.dumps(response)
+            print("json.dumps() 출력: ", response)
+            # response = summary_chain.invoke(
+            #     {"input": response}
+            # ).content
             return response
+        except ObjectDoesNotExist:
+            return json.dumps({"error": "User or order not found"})
         except Exception as e:
-            return str(e)
+            return json.dumps({"error": str(e)})
