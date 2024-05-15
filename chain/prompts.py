@@ -52,3 +52,18 @@ extract_order_args_prompt = PromptTemplate(
     input_variables=["user_id", "input", "products"],
     partial_variables={"format_instructions": [create_order_parser.get_format_instructions()]},
 )
+
+
+order_cancel_prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """
+            You are a robot that determines whether the customer input message contains an order_id.
+            If the input contains an order_id, respond with '조회 가능'.
+            If the input does not contain an order_id, respond with '조회 불가능'.
+            """
+        ),
+        ("human", "input: {input}\norder_id: {order_id}")
+    ]
+)

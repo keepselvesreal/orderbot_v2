@@ -5,19 +5,10 @@
 {% block content %}
     <div id="chat">        
     </div>
-    <div id="recent-orders" style="display: none;">
-        <h3>최근 주문 내역</h3>
-        <ul id="order-list"></ul>
-    </div>
     <div id="chat-input">
         <input id="chat-message-input" type="text">
         <input id="chat-message-submit" type="submit" value="전송">
     </div>
-{% endblock %}
-
-{% block include_css %}
-    {% load static %}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
 {% endblock %}
 
 {% block include_js %}
@@ -41,11 +32,7 @@
         const data = JSON.parse(event.data);
         const chat = document.getElementById('chat')
 
-        if (data.recent_orders) {
-            displayRecentOrders(data.recent_orders);
-        } else {
-            appendMessage(data, chat);
-        }
+        appendMessage(data, chat);
     };
 
     chatSocket.onclose = function(event) {
@@ -93,37 +80,6 @@
             <span class='date'>${datetime}</span><br>
             ${data.message}</div>`;
         chatElement.scrollTop = chatElement.scrollHeight;
-    }
-
-    function displayRecentOrders(orders) {
-        const recentOrdersDiv = document.getElementById('recent-orders');
-        const orderList = document.getElementById('order-list');
-
-        orderList.innerHTML = ''; // 기존 주문 내역 초기화
-        orders.forEach(order => {
-            const listItem = document.createElement('li');
-            listItem.classList.add('order-item'); // CSS 클래스 추가
-            let orderDetails = `Order ID: ${order.id}, Status: ${order.order_status}, Created At: ${order.created_at}<br>Items:<ul>`;
-            order.items.forEach(item => {
-                orderDetails += `<li>${item.product_name} - Quantity: ${item.quantity}, Price: ${item.price}</li>`;
-            });
-            orderDetails += `</ul>`;
-            listItem.innerHTML = orderDetails;
-            listItem.addEventListener('click', () => {
-                document.querySelectorAll('.order-item').forEach(item => item.classList.remove('selected'));
-                listItem.classList.add('selected');
-                // 주문 변경/취소 요청을 서버로 전송
-                chatSocket.send(JSON.stringify({
-                    message: orderDetails,
-                    user_id: userId,
-                    datetime: new Date().toISOString(),
-                    order_id: order.id
-                }));
-            });
-            orderList.appendChild(listItem);
-        });
-
-        recentOrdersDiv.style.display = 'block';
     }
 
     input.focus();

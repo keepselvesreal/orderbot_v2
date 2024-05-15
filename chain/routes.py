@@ -1,6 +1,9 @@
 from langchain_core.runnables import RunnableLambda
 
-from .tools import get_completed_orders, get_payment_completed_orders, get_changed_orders, get_canceled_orders
+from .tools import (
+    get_completed_orders, get_payment_completed_orders, get_changed_orders, get_canceled_orders,
+    fetch_recent_orders, cancel_order
+    )
 
 
 def inquiry_types_route(info):
@@ -30,6 +33,14 @@ def requeset_types_route(info):
     if "주문 변경 요청" in info["request_type"].content.lower():
         return "주문 변경 요청 체인 구현 예정 중"
     elif "주문 취소 요청" in info["request_type"].content.lower():
-        return "주문 변경 요청 체인 구현 예정 중"
+        return RunnableLambda(cancel_route_by_order_id)
     else:
         return order_chain
+    
+
+def cancel_route_by_order_id(info):
+    print("cancel_route_by_order_id 함수로 전달된 데이터 -> ", info)
+    if "조회 가능" in info["recent_orders"].content:
+        return RunnableLambda(cancel_order)
+    else:
+        return RunnableLambda(fetch_recent_orders)

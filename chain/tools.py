@@ -7,6 +7,7 @@ from django.db import transaction
 from typing import Tuple
 from decimal import Decimal
 from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist
 
 from products.models import Order, Product, OrderItem, OrderStatus
 from .parsers import CreateOrderData
@@ -104,14 +105,44 @@ def change_order_status(order_id: int, new_status: str) -> Order:
         
         return order
 
-def cancel_order(order_id: int) -> Order:
-    with transaction.atomic():
-        order = Order.objects.get(id=order_id)
-        # 주문 상태를 'order_canceled'로 변경
-        order.order_status = 'order_canceled'
-        order.save()
-        
-        # 주문 상태 생성 (OrderStatus는 시그널 핸들러에 의해 자동 생성/업데이트)
-        # OrderStatus.objects.create(order=order, status='order_canceled')
-        
-        return order
+def cancel_order(data: dict) -> dict:
+    order_id = data["order_id"]
+    
+    try:
+        with transaction.atomic():
+            order = Order.objects.get(id=order_id)
+            # 주문 상태를 'order_canceled'로 변경
+            order.order_status = 'order_canceled'
+            order.save()
+            
+            # 주문 상태 생성 (OrderStatus는 시그널 핸들러에 의해 자동 생성/업데이트)
+            # OrderStatus.objects.create(order=order, status='order_canceled')
+            
+            return order
+    except Order.DoesNotExist:
+        raise ValueError(f"Order with ID {order_id} does not exist")
+
+def fetch_recent_orders(dict):
+    user_id = dict["user_id"]
+    try:
+        orders = Order.objects.filter(user_id=user_id).order_by('-created_at')[:5]
+        recent_orders = []
+        for order in orders:
+            order_items = OrderItem.objects.filter(order=order)
+            items_details = [
+                {
+                    "product_name": item.product.product_name,
+                    "quantity": item.quantity,
+                    "price": float(item.price)  # Decimal을 float으로 변환
+                } for item in order_items
+            ]
+            recent_orders.append({
+                "id": order.id,
+                "created_at": order.created_at.isoformat(),
+                "order_status": order.order_status,
+                "items": items_details
+            })
+        print("recent orders -> ", recent_orders)
+        return recent_orders
+    except ObjectDoesNotExist:
+        return []
