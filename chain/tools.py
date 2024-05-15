@@ -4,11 +4,12 @@ from langchain_core.runnables import Runnable
 from django.contrib.auth.models import User
 from django.db.models import Prefetch
 from django.db import transaction
-from typing import Dict, Tuple
+from typing import Tuple
+from decimal import Decimal
 from django.db import transaction
 
 from products.models import Order, Product, OrderItem, OrderStatus
-
+from .parsers import CreateOrderData
 
 @tool
 def get_recent_orders_by_status(user_id, status):
@@ -71,19 +72,20 @@ def get_canceled_orders(dict):
     return Order.objects.filter(user_id=user_id, order_status='order_canceled')
 
 
-
-def create_order(user: User, product_quantities: Dict[int, int]) -> Tuple[Order, float]:
+def create_order(data: CreateOrderData) -> Tuple[Order, Decimal]:
     with transaction.atomic():
+        # User 객체 가져오기
+        user = User.objects.get(id=data.user_id)
+        
         # 주문 생성
         order = Order.objects.create(user=user)
         
         # 주문 상품 생성
-        total_price = 0.0
-        for product_id, quantity in product_quantities.items():
-            product = Product.objects.get(id=product_id)
-            price = product.price * quantity / product.quantity  # 상품 가격 계산
-            OrderItem.objects.create(order=order, product=product, quantity=quantity, price=price)
-            total_price += price
+        total_price = Decimal('0.00')
+        for item in data.items:
+            product = Product.objects.get(product_name=item.product_name)
+            OrderItem.objects.create(order=order, product=product, quantity=item.quantity, price=item.price)
+            total_price += item.price * item.quantity
         
         # 주문 상태 생성 (OrderStatus는 시그널 핸들러에 의해 자동 생성/업데이트)
         # OrderStatus.objects.create(order=order, status='order')

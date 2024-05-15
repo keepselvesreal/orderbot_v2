@@ -16,9 +16,20 @@ def inquiry_types_route(info):
 
 
 def inquiry_request_route(info):
-    from .chains import handle_inquiry_chain
+    from .chains import handle_inquiry_chain, handle_request_chain
     print("inquiry_request_route 함수로 전달된 데이터 -> ", info)
     if "문의" in info["msg_type"].content.lower():
         return handle_inquiry_chain
     else:
-        return "요청 문의 처리 체인 구현 예정"
+        return handle_request_chain
+    
+
+def requeset_types_route(info):
+    from .chains import order_chain
+    print("requeset_types_route 함수로 전달된 데이터 -> ", info)
+    if "주문 변경 요청" in info["request_type"].content.lower():
+        return "주문 변경 요청 체인 구현 예정 중"
+    elif "주문 취소 요청" in info["request_type"].content.lower():
+        return "주문 변경 요청 체인 구현 예정 중"
+    else:
+        return order_chain

@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field, conint, condecimal
 from typing import List
+from langchain_core.output_parsers import PydanticOutputParser
+
 
 class OrderItemData(BaseModel):
     product_name: str = Field(..., description="Name of the product")
@@ -9,6 +11,9 @@ class OrderItemData(BaseModel):
 class CreateOrderData(BaseModel):
     user_id: int = Field(..., description="ID of the user creating the order")
     items: List[OrderItemData] = Field(..., description="List of items to order")
+
+create_order_parser = PydanticOutputParser(pydantic_object=CreateOrderData)
+
 
 class UpdateOrderStatusData(BaseModel):
     order_id: int = Field(..., description="ID of the order to update")

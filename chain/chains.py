@@ -5,8 +5,10 @@ from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
-from .tools import tools, determine_tool_usage
-from .routes import inquiry_types_route, inquiry_request_route
+from .tools import tools, determine_tool_usage, create_order
+from .routes import inquiry_types_route, inquiry_request_route, requeset_types_route
+from .prompts import request_type_prompt, extract_order_args_prompt
+from .parsers import create_order_parser
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -76,6 +78,20 @@ handle_inquiry_chain = classify_inquiry_chain | RunnableLambda(inquiry_types_rou
 
 full_chain = classify_message_with_memory_chain | inquiry_request_route
 
+
+classify_request_chain = RunnablePassthrough.assign(request_type=request_type_prompt | model)
+
+
+extract_order_args_chain = extract_order_args_prompt | model | create_order_parser
+
+
+order_chain = extract_order_args_chain | create_order
+
+
+handle_request_chain = classify_request_chain | RunnableLambda(requeset_types_route)
+
+
+#------------------------------------------------------------------------------------------
 prompt = ChatPromptTemplate.from_messages(
     [
         (
