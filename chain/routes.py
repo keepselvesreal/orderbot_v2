@@ -28,12 +28,12 @@ def inquiry_request_route(info):
     
 
 def requeset_types_route(info):
-    from .chains import order_chain
+    from .chains import order_chain, order_cancel_chain
     print("requeset_types_route 함수로 전달된 데이터 -> ", info)
     if "주문 변경 요청" in info["request_type"].content.lower():
         return "주문 변경 요청 체인 구현 예정 중"
     elif "주문 취소 요청" in info["request_type"].content.lower():
-        return RunnableLambda(cancel_route_by_order_id)
+        return order_cancel_chain | cancel_route_by_order_id
     else:
         return order_chain
     

@@ -91,7 +91,8 @@ def create_order(data: CreateOrderData) -> Tuple[Order, Decimal]:
         # 주문 상태 생성 (OrderStatus는 시그널 핸들러에 의해 자동 생성/업데이트)
         # OrderStatus.objects.create(order=order, status='order')
         
-        return order, total_price
+        # return order, total_price 정상 동작 확인했으나 다른 함수와 통일 위해 total_price 삭제
+        return order
 
 def change_order_status(order_id: int, new_status: str) -> Order:
     with transaction.atomic():
@@ -143,6 +144,6 @@ def fetch_recent_orders(dict):
                 "items": items_details
             })
         print("recent orders -> ", recent_orders)
-        return recent_orders
+        return {"recent_orders": recent_orders}
     except ObjectDoesNotExist:
         return []
