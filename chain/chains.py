@@ -88,10 +88,11 @@ extract_order_args_chain = extract_order_args_prompt | model | create_order_pars
 order_chain = extract_order_args_chain | create_order
 
 
+order_cancel_chain = RunnablePassthrough.assign(recent_orders=order_cancel_prompt | model )
+
+
 handle_request_chain = classify_request_chain | RunnableLambda(requeset_types_route)
 
-
-order_cancel_chain = RunnablePassthrough.assign(recent_orders=order_cancel_prompt | model )
 
 #------------------------------------------------------------------------------------------
 prompt = ChatPromptTemplate.from_messages(

@@ -23,37 +23,28 @@ class ChatConsumer(WebsocketConsumer):
         text_data_json = json.loads(text_data)
         user_id = text_data_json["user_id"]
         order_id = text_data_json.get("order_id", None)
+        if order_id:
+            print("order_id 확보", order_id)
         message = text_data_json["message"]
 
-        # if "주문 취소" in message:
-        if "절대 해당되지 않을 조건" in message:
-            recent_orders = self.get_recent_orders(user_id)
-            now = timezone.now()
-            self.send(text_data=json.dumps(
-                {"recent_orders": recent_orders, 
-                 "datetime": now.isoformat(),
-                 "user": self.user.username} # User Object인 듯
-                ))
-        else:
-            response_message = self.orderbot_response(user_id, message, order_id)
-            now = timezone.now()
+        response_message = self.orderbot_response(user_id, message, order_id)
+        now = timezone.now()
 
-            if "recent_orders" in response_message:
-                print("출력에 포함된 recent_orders 인식")
-                response_message = response_message["recent_orders"]
-                self.send(text_data=json.dumps(
-                {"recent_orders": response_message, 
+        if "recent_orders" in response_message:
+            response_message = response_message["recent_orders"]
+            self.send(text_data=json.dumps(
+            {"recent_orders": response_message, 
+            "datetime": now.isoformat(),
+            "user": self.user.username, # User Object인 듯
+            }
+            ))
+        else:
+            self.send(text_data=json.dumps(
+                {"message": response_message, 
                 "datetime": now.isoformat(),
-                "user": self.user.username, # User Object인 듯
+                "user": self.user.username,
                 }
                 ))
-            else:
-                self.send(text_data=json.dumps(
-                    {"message": response_message, 
-                    "datetime": now.isoformat(),
-                    "user": self.user.username, # User Object인 듯
-                    }
-                    ))
         
     def orderbot_response(self, user_id, message, order_id):
         # products.json 파일의 경로 설정
@@ -73,11 +64,10 @@ class ChatConsumer(WebsocketConsumer):
                 config={"configurable": {"session_id": "test_240514-3"}}
             )
             print("full chain 출력: ", response)
+            
             if "recent_orders" in response:
                 return response
 
-            # response = response[0]
-            # print("response[0]: ", response, type(response))
             if isinstance(response, QuerySet):
                 print("QuerySet 처리 구간 진입")
                 print("response: ", response)
@@ -85,11 +75,9 @@ class ChatConsumer(WebsocketConsumer):
             elif hasattr(response, "to_dict"):
                 response = response.to_dict()
             response = json.dumps(response)
-            print("json.dumps() 출력: ", response)
-            print("json.dumps() 자료형: ", type(response))
-            # response = summary_chain.invoke(
-            #     {"input": response}
-            # ).content
+            # print("json.dumps() 출력: ", response)
+            # print("json.dumps() 자료형: ", type(response))
+
             return response
         except ObjectDoesNotExist:
             return json.dumps({"error": "User or order not found"})
@@ -120,3 +108,6 @@ class ChatConsumer(WebsocketConsumer):
             return recent_orders
         except ObjectDoesNotExist:
             return []
+        
+    def handle_execution(self):
+        pass

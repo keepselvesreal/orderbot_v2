@@ -3,6 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from .parsers import create_order_parser
 
 
+# order_id가 있는 경우 직전의 출력 결과를 그대로 반복하게 만들어야 함.
 message_type_prompt = ChatPromptTemplate.from_messages(
     [
         (
