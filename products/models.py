@@ -43,6 +43,7 @@ class Order(models.Model):
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             "order_status": self.order_status,
+            "items": [item.to_dict() for item in self.order_items.all()]  # 이 줄을 추가하여 OrderItems를 포함
         }
 
 
@@ -54,6 +55,13 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity} x {self.product.product_name} at {self.price} each"
+    
+    def to_dict(self):
+        return {
+            "product_name": self.product.product_name,
+            "quantity": self.quantity,
+            "price": float(self.price)  # Decimal을 float으로 변환
+        }
 
 
 

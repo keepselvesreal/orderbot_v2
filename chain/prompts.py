@@ -185,7 +185,7 @@ classify_confirmation_prompt = ChatPromptTemplate.from_messages(
             
             To make this determination, the following conditions must be met:
             1. There must be an AIMessage that asks for approval for the action specified in action_type, based on the specified order details.
-            2. The user must have explicitly expressed consent in response to the AIMessage asking for approval of the action specified in action_type.
+            2. The user must have explicitly expressed consent (e.g., "Yes, I approve" or "Okay, proceed with the change") in response to the AIMessage asking for approval of the action specified in action_type.
             
             The chat history is provided as a list, where the most recent message is at the end of the list. You should start checking from the most recent message and move backwards.
 

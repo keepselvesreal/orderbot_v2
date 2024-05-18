@@ -100,6 +100,41 @@ def create_order(data: CreateOrderData) -> Tuple[Order, Decimal]:
         
         # return order, total_price 정상 동작 확인했으나 다른 함수와 통일 위해 total_price 삭제
         return order
+    
+
+def update_order(order_data):
+    print("="*70)
+    print("update_order 진입")
+    try:
+        # Pydantic 모델인 OrderDetails 객체를 딕셔너리로 변환
+        order_data = order_data.dict() if hasattr(order_data, "dict") else order_data
+
+        # Transaction을 사용하여 원자성을 보장
+        with transaction.atomic():
+            # 주문을 가져옴
+            order = Order.objects.get(id=order_data['id'])
+            # 주문 상태 업데이트
+            order.order_status = order_data['order_status']
+            order.save()
+
+            # 기존 주문 항목 삭제
+            OrderItem.objects.filter(order=order).delete()
+
+            # 새로운 주문 항목 추가
+            for item_data in order_data['items']:
+                product = Product.objects.get(product_name=item_data['product_name'])
+                OrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    quantity=item_data['quantity'],
+                    price=item_data['price']
+                )
+            return {"status": "success", "message": "Order updated successfully"}
+    except ObjectDoesNotExist as e:
+        return {"status": "error", "message": str(e)}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 
 
 def change_order_status(order_id: int, new_status: str) -> Order:

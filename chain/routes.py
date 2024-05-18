@@ -51,13 +51,15 @@ def requeset_types_route(info):
     
 
 def route_by_order_id(info):
-    from .chains import handle_change_cancel_chain
+    # handle_change_cancel_chain을 주문 변경 또는 취소 요청에 대한 확인 메시지 작성 체인으로 수정함
+    from .chains import handle_change_cancel_chain, handle_change_cancel_chain_with_memory
     
     print("="*70)
     print("route_by_order_id 함수로 전달된 데이터\n", info)
 
     if "조회 가능" in info["recent_orders"].content:
-        return handle_change_cancel_chain
+        # return handle_change_cancel_chain
+        return handle_change_cancel_chain_with_memory
     else:
         return RunnableLambda(fetch_recent_orders)
     
@@ -69,7 +71,6 @@ def change_cancel_route(info):
     print("change_cancel_route 함수로 전달된 데이터\n", info)
     
     if "주문 변경" in info["action_type"]:
-        print("주문 변경 처리 방향 진입")
         return handle_order_change_chain
     elif "주문 취소" in info["action_type"]:
         return RunnableLambda(cancel_order)
@@ -77,8 +78,10 @@ def change_cancel_route(info):
 
 def execution_or_message_route(info):
     from .chains import generate_confirm_message_chain
+    
     print("="*70)
     print("execution_or_message_route 함수로 전달된 데이터\n", info)
+    
     if "yes" in info["execution_confirmation"].content.lower():
         return RunnableLambda(change_cancel_route)
     else:

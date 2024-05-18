@@ -22,7 +22,7 @@ from .prompts import (
     )
 from .parsers import create_order_parser, order_detail_parser
 from .helpers import add_memory, add_action_type
-from .tools import fetch_products, fetch_order_details
+from .tools import fetch_products, fetch_order_details, update_order
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -98,11 +98,15 @@ handle_order_change_chain = (
     {"input": itemgetter("input"),
      "products": RunnableLambda(fetch_products), 
      "queried_result": RunnableLambda(fetch_order_details)}
-     | order_change_chain) 
+     | order_change_chain
+     | RunnableLambda(update_order)) 
 
 
 # 종합 체인
-handle_change_cancel_chain = confirmation_chain | execution_or_message_route
+# handle_change_cancel_chain = confirmation_chain | execution_or_message_route
+handle_change_cancel_chain = confirmation_chain | RunnablePassthrough.assign(confirm_message=generate_confirm_message_chain)
+
+handle_change_cancel_chain_with_memory = add_memory(handle_change_cancel_chain, SESSION_ID)
 
 full_chain = classify_message_with_memory_chain | inquiry_request_route
 
