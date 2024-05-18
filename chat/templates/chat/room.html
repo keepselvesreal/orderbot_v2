@@ -62,7 +62,7 @@
 
             const data = {
                 message: message,
-                user_id: userId,
+                userId: userId,
                 datetime: new Date().toISOString()
             };
             chatSocket.send(JSON.stringify(data));
@@ -114,10 +114,11 @@
                 listItem.classList.add('selected');
                 // 주문 변경/취소 요청을 서버로 전송
                 chatSocket.send(JSON.stringify({
-                    message: orderDetails,
-                    user_id: userId,
+                    orderDetails: orderDetails,
+                    message: null,
+                    userId: userId,
                     datetime: new Date().toISOString(),
-                    order_id: order.id
+                    orderId: order.id
                 }));
             });
             orderList.appendChild(listItem);

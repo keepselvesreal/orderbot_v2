@@ -7,54 +7,118 @@ from langchain_core.prompts import (
 from .parsers import create_order_parser, order_detail_parser
 
 
+# message_type_prompt = ChatPromptTemplate.from_messages(
+#     [
+#         (
+#             "system",
+#             """
+#             You are a robot that classifies customer input messages into one of the following two types:
+#             - Product inquiry, order history inquiry, order change history inquiry, order cancellation history inquiry: '문의'
+#             - Order request, order change request, order cancellation request: '요청'
+#             You need to review the messages in the Messages Placeholder from the latest to the oldest.
+#             Pay particular attention to the latest HumanMessage when making the classification.
+#             """
+#         ),
+#         MessagesPlaceholder(variable_name="chat_history"),
+#         ("human", "{input}"),
+
+#     ]
+# )
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+
 message_type_prompt = ChatPromptTemplate.from_messages(
     [
         (
             "system",
             """
-            너는 고객 입력 메시지를 아래 두 유형 중 하나로 분류하는 로봇이야.
-            -상품 문의, 주문 내역 조회, 주문 변경 내역 조회, 주문 취소 내역 조회: '문의'
-            -주문 요청, 주문 변경 요청, 주문 취소 요청: '요청'
+            You are a robot that classifies customer input messages into one of the following two types:
+            - Product inquiry, order history inquiry, order change history inquiry, order cancellation history inquiry: '문의'
+            - Order request, order change request, order cancellation request: '요청'
+            
+            You need to review the messages in the Messages Placeholder from the latest to the oldest.
+
+            Consider the previous AI responses and their classifications to understand the intent behind the current input. 
+            Use this context to make an accurate classification. 
+            If the latest AI response was classified as '요청', and the current input is related to an order, it is likely a '요청'.
+            
+            Additionally, if the input contains order details, it should be classified as '요청'.
             """
         ),
         MessagesPlaceholder(variable_name="chat_history"),
         ("human", "{input}"),
-
     ]
 )
 
+
+# inquiry_type_prompt = ChatPromptTemplate.from_messages(
+#     [
+#         (
+#             "system",
+#             """
+#             너는 고객의 문의에 대응되는 주문 상태를 판단하는 로봇이야.
+#             사용자가 입력한 메시지를 보고 아래 주문 상태 중 하나로 분류해야 해.
+#             -주문 상품에 관한 문의: '주문 완료'
+#             -입금 완료에 관한 문의: '입금 완료'
+#             -주문 변경에 관한 문의: '주문 변경'
+#             -주문 취소에 관한 문의: '주문 취소'
+#             """
+#         ),
+#         ("human", "{input}"),
+
+#     ]
+# )
 inquiry_type_prompt = ChatPromptTemplate.from_messages(
     [
         (
             "system",
             """
-            너는 고객의 문의에 대응되는 주문 상태를 판단하는 로봇이야.
-            사용자가 입력한 메시지를 보고 아래 주문 상태 중 하나로 분류해야 해.
-            -주문 상품에 관한 문의: '주문 완료'
-            -입금 완료에 관한 문의: '입금 완료'
-            -주문 변경에 관한 문의: '주문 변경'
-            -주문 취소에 관한 문의: '주문 취소'
+            You are a robot that determines the order status corresponding to customer inquiries.
+            Based on the user's input message, you need to classify it into one of the following order statuses:
+            - Inquiry about ordered products: '주문 완료'
+            - Inquiry about payment completion: '입금 완료'
+            - Inquiry about order changes: '주문 변경'
+            - Inquiry about order cancellations: '주문 취소'
+            You need to review the messages in the Messages Placeholder from the latest to the oldest.
+            Pay particular attention to the latest HumanMessage when making the classification.
             """
         ),
+        MessagesPlaceholder(variable_name="chat_history"),
         ("human", "{input}"),
-
     ]
 )
 
 
+
+# request_type_prompt = ChatPromptTemplate.from_messages(
+#     [
+#         (
+#             "system",
+#             """
+#             너는 주문 관련 요청을 분류하는 로봇이야.
+#             주문 관련 요청을 다음 중 하나로 분류해야 해: '주문 요청', '주문 변경 요청', '주문 취소 요청'
+#             """
+#         ),
+#         ("human", "{input}"),
+
+#     ]
+# )
 request_type_prompt = ChatPromptTemplate.from_messages(
     [
         (
             "system",
             """
-            너는 주문 관련 요청을 분류하는 로봇이야.
-            주문 관련 요청을 다음 중 하나로 분류해야 해: '주문 요청', '주문 변경 요청', '주문 취소 요청'
+            You are a robot that classifies order-related requests.
+            You need to classify the order-related request into one of the following types: '주문 요청', '주문 변경 요청', '주문 취소 요청'
+            You need to review the messages in the Messages Placeholder from the latest to the oldest.
+            
+            If any previous AI response in the Messages Placeholder was classified as '주문 변경 요청' or '주문 취소 요청', consider this context and classify the current input accordingly.
             """
         ),
+        MessagesPlaceholder(variable_name="chat_history"),
         ("human", "{input}"),
-
     ]
 )
+
 
 
 extract_order_args_prompt = PromptTemplate(
@@ -77,20 +141,6 @@ extract_order_args_prompt = PromptTemplate(
 )
 
 
-# 밑에 새 프롬프트 작성하여 해당 프롬프트 대체할 것
-# order_cancel_prompt = ChatPromptTemplate.from_messages(
-#     [
-#         (
-#             "system",
-#             """
-#             You are a robot that determines whether the customer input message contains an order_id.
-#             If the input contains an order_id, respond with '조회 가능'.
-#             If the input does not contain an order_id, respond with '조회 불가능'.
-#             """
-#         ),
-#         ("human", "input: {input}\norder_id: {order_id}")
-#     ]
-# )
 classify_query_prompt = ChatPromptTemplate.from_messages(
     [
         (

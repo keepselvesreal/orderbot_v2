@@ -8,6 +8,9 @@ from typing import Tuple
 from decimal import Decimal
 from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist
+import json
+import os
+from django.shortcuts import get_object_or_404
 
 from products.models import Order, Product, OrderItem, OrderStatus
 from .parsers import CreateOrderData
@@ -75,6 +78,9 @@ def get_canceled_orders(dict):
 
 
 def create_order(data: CreateOrderData) -> Tuple[Order, Decimal]:
+    print("="*70)
+    print("create_order 진입")
+    
     with transaction.atomic():
         # User 객체 가져오기
         user = User.objects.get(id=data.user_id)
@@ -110,6 +116,9 @@ def change_order_status(order_id: int, new_status: str) -> Order:
 
 
 def cancel_order(data: dict) -> dict:
+    print("="*70)
+    print("cancel_order 진입")
+
     order_id = data["order_id"]
     
     try:
@@ -128,6 +137,9 @@ def cancel_order(data: dict) -> dict:
 
 
 def fetch_recent_orders(dict):
+    print("="*70)
+    print("fetch_recent_orders 진입")
+
     user_id = dict["user_id"]
     try:
         orders = Order.objects.filter(user_id=user_id).order_by('-created_at')[:5]
@@ -147,7 +159,45 @@ def fetch_recent_orders(dict):
                 "order_status": order.order_status,
                 "items": items_details
             })
-        print("recent orders -> ", recent_orders)
+        print("recent orders\n", recent_orders)
         return {"recent_orders": recent_orders}
     except ObjectDoesNotExist:
         return []
+    
+
+def fetch_order_details(dict):
+    order_id = dict["order_id"]
+    # 특정 order_id에 해당하는 주문 객체를 조회
+    order = get_object_or_404(Order, id=order_id)
+    
+    # 주문 객체를 사전 형태로 변환
+    order_dict = order.to_dict()
+    
+    # 해당 주문에 포함된 모든 주문 아이템 조회
+    order_items = OrderItem.objects.filter(order=order)
+    
+    # 주문 아이템들을 사전 형태로 변환하여 추가
+    order_dict["items"] = [
+        {
+            "product_name": item.product.product_name,
+            "quantity": item.quantity,
+            "price": float(item.price)
+        }
+        for item in order_items
+    ]
+    
+    return order_dict
+
+
+def fetch_products(dict):
+    print("="*70)
+    print("fetch_products 진입")
+
+    base_dir = os.path.dirname(__file__)
+    # products.json 파일의 절대 경로를 구합니다
+    file_path = os.path.join(base_dir, 'files', 'products.json')
+    
+    with open(file_path, 'r', encoding='utf-8') as file:
+        products = json.load(file)
+
+    return products
