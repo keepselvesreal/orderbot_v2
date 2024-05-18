@@ -23,21 +23,22 @@ class ChatConsumer(WebsocketConsumer):
         text_data_json = json.loads(text_data)
         user_id = text_data_json["user_id"]
         order_id = text_data_json.get("order_id", None)
-        message = text_data_json["message"]
-
-        response_message = self.orderbot_response(user_id, message, order_id)
-        now = timezone.now()
-
         if order_id:
             print("order_id 확보", order_id)
+            order_detail = text_data_json["message"]
+            print("order_detail", order_detail)
             response_message = self.handle_execution()
             self.send(text_data=json.dumps(
                 {"message": response_message, 
-                "datetime": now.isoformat(),
+                "datetime": timezone.now().isoformat(), # now 대신 timezone.now() 바로 사용.
                 "user": self.user.username,
                 "ask_confirmation": True
                 }
                 ))
+        message = text_data_json["message"]
+
+        response_message = self.orderbot_response(user_id, message, order_id)
+        now = timezone.now()
 
         if "recent_orders" in response_message:
             response_message = response_message["recent_orders"]

@@ -12,6 +12,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from products.models import Order, Product, OrderItem, OrderStatus
 from .parsers import CreateOrderData
 
+
 @tool
 def get_recent_orders_by_status(user_id, status):
     """
@@ -94,6 +95,7 @@ def create_order(data: CreateOrderData) -> Tuple[Order, Decimal]:
         # return order, total_price 정상 동작 확인했으나 다른 함수와 통일 위해 total_price 삭제
         return order
 
+
 def change_order_status(order_id: int, new_status: str) -> Order:
     with transaction.atomic():
         order = Order.objects.get(id=order_id)
@@ -105,6 +107,7 @@ def change_order_status(order_id: int, new_status: str) -> Order:
         # OrderStatus.objects.create(order=order, status=new_status)
         
         return order
+
 
 def cancel_order(data: dict) -> dict:
     order_id = data["order_id"]
@@ -122,6 +125,7 @@ def cancel_order(data: dict) -> dict:
             return order
     except Order.DoesNotExist:
         raise ValueError(f"Order with ID {order_id} does not exist")
+
 
 def fetch_recent_orders(dict):
     user_id = dict["user_id"]
