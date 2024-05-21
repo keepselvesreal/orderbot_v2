@@ -27,21 +27,21 @@ from .tools import fetch_products, fetch_order_details, update_order
 from dotenv import load_dotenv
 load_dotenv()
 
-SESSION_ID = "240518"
+SESSION_ID = "240521"
 model_name = ""
 model = ChatOpenAI()
 
 
 classify_message_chain = message_type_prompt | model
 
-classify_message_with_memory = add_memory(classify_message_chain, SESSION_ID)
+classify_message_with_memory = add_memory(classify_message_chain, SESSION_ID, context="사용자 입력 유형", save_mode="both")
 
 classify_message_with_memory_chain = RunnablePassthrough.assign(msg_type=classify_message_with_memory)
 
 
 classify_inquiry_chain = inquiry_type_prompt | model
 
-classify_inquiry_with_memory = add_memory(classify_inquiry_chain, SESSION_ID)
+classify_inquiry_with_memory = add_memory(classify_inquiry_chain, SESSION_ID, context="사용자 문의 유형", save_mode="output")
 
 classify_inquiry_with_memory_chain = RunnablePassthrough.assign(inquiry_type=classify_inquiry_with_memory)
 
@@ -50,7 +50,7 @@ handle_inquiry_chain = classify_inquiry_with_memory_chain | RunnableLambda(inqui
 
 classify_request_chain = request_type_prompt | model
 
-classify_request_with_memory = add_memory(classify_request_chain, SESSION_ID)
+classify_request_with_memory = add_memory(classify_request_chain, SESSION_ID, context="사용자 요청 유형", save_mode="output")
 
 classify_request_with_memory_chain = RunnablePassthrough.assign(request_type=classify_request_with_memory)
 
@@ -68,13 +68,13 @@ classify_query_chain = RunnablePassthrough.assign(recent_orders=classify_query_p
 # 메모리 필요
 classify_change_or_cancel_chain = order_change_cancel_prompt | model
 
-classify_change_or_cancel_chain_with_memory = add_memory(classify_change_or_cancel_chain, SESSION_ID)
+classify_change_or_cancel_chain_with_memory = add_memory(classify_change_or_cancel_chain, SESSION_ID, context="사용자 승인을 요구한 요청 유형", save_mode="output")
 
 
 # 메모리 필요
 classify_confirmation_chain = classify_confirmation_prompt | model
 
-classify_confirmation_chain_with_memory = add_memory(classify_confirmation_chain, SESSION_ID)
+classify_confirmation_chain_with_memory = add_memory(classify_confirmation_chain, SESSION_ID, context="사용자 승인 여부", save_mode="output")
 
 
 confirmation_chain = (
@@ -106,7 +106,7 @@ handle_order_change_chain = (
 # handle_change_cancel_chain = confirmation_chain | execution_or_message_route
 handle_change_cancel_chain = confirmation_chain | RunnablePassthrough.assign(confirm_message=generate_confirm_message_chain)
 
-handle_change_cancel_chain_with_memory = add_memory(handle_change_cancel_chain, SESSION_ID)
+handle_change_cancel_chain_with_memory = add_memory(handle_change_cancel_chain, SESSION_ID, save_mode="output")
 
 full_chain = classify_message_with_memory_chain | inquiry_request_route
 
