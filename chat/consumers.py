@@ -45,7 +45,7 @@ class ChatConsumer(WebsocketConsumer):
         now = timezone.now()
 
         self.send(text_data=json.dumps(
-            {"message": response_message["msg_type"],
+            {"message": response_message,
              "datetime": now.isoformat(),
              "user": self.user.username}
              ))
@@ -64,6 +64,13 @@ class ChatConsumer(WebsocketConsumer):
                  "execution_confirmation": execution_confirmation}
             )
             print("<orderbot response>\n", "type-> ", type(response), "\ncontent-> ", response)
+            
+            if isinstance(response, Order):
+                response = response.to_dict()
+            # 응답이 딕셔너리인 경우 JSON 문자열로 변환
+            elif isinstance(response, dict):
+                response = json.dumps(response)
+
             return response
         except ObjectDoesNotExist:
             return json.dumps({"error": "User or order not found"})

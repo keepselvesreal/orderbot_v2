@@ -35,7 +35,7 @@ model = ChatOpenAI()
 specific_model = ChatOpenAI(model="gpt-4o")
 
 
-classify_message_chain = message_type_prompt | model | StrOutputParser()
+classify_message_chain = message_type_prompt | model
 
 classify_message_with_memory = add_memory(classify_message_chain, SESSION_ID, context="classify_message_with_memory 응답", save_mode="both")
 
@@ -43,7 +43,7 @@ classify_message_with_memory_chain = RunnablePassthrough.assign(msg_type=classif
 
 general_inquiry_chain = general_inquiry_prompt | model
 
-general_inquiry_chain_with_memory = add_memory(general_inquiry_chain, SESSION_ID, context="general_inquiry_chain", save_mode="both")
+general_inquiry_chain_with_memory = add_memory(general_inquiry_chain, SESSION_ID, context="general_inquiry_chain", save_mode="output")
 
 classify_inquiry_chain = inquiry_type_prompt | model
 
@@ -116,7 +116,7 @@ handle_change_cancel_chain_with_memory = add_memory(handle_change_cancel_chain, 
 
 # full_chain = classify_message_with_memory_chain | inquiry_request_route
 
-full_chain = classify_message_with_memory_chain
+full_chain = classify_message_with_memory_chain | inquiry_request_route
 #------------------------------------------------------------------------------------------
 # prompt = ChatPromptTemplate.from_messages(
 #     [

@@ -54,12 +54,13 @@ class RunnableWithMessageHistory(Runnable):
         
         result = self.runnable.invoke(input, config)
         
-        if self.context_key and input.get(self.context_key):
-            context = input[self.context_key]
-            result_with_context = AIMessage(content=f"{context}\n{result}")
-            history.add_messages([current_input_message, result_with_context])
-        else:
-            history.add_messages([current_input_message, result])
+        if isinstance(result, AIMessage):
+            if self.context_key and input.get(self.context_key):
+                context = input[self.context_key]
+                result_with_context = AIMessage(content=f"{context}\n{result.content}")
+                history.add_messages([current_input_message, result_with_context])
+            else:
+                history.add_messages([current_input_message, result])
         
         return result
 
@@ -72,13 +73,14 @@ def add_memory(runnable, session_id, context="", save_mode="both"):
         context_key="context"
     )
     
-    memory_by_session = RunnableLambda(
-        lambda input: runnable_with_memory.invoke(
+    def memory_lambda(input):
+        return runnable_with_memory.invoke(
             {**input, "context": context},
-            config={"configurable": {"session_id": session_id,
-                                     "save_mode": save_mode}}
+            config={"configurable": {"session_id": session_id, "save_mode": save_mode}}
         )
-    )
+    
+    memory_by_session = RunnableLambda(memory_lambda)
+    
     return memory_by_session
 
 

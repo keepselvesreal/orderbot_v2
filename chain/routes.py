@@ -35,7 +35,7 @@ def inquiry_request_route(info):
     print("="*70)
     print("inquiry_request_route 함수로 전달된 데이터\n", info)
 
-    if "문의" in info["msg_type"].content.lower():
+    if "문의" in info["msg_type"].content:
         return handle_inquiry_chain
     else:
         return handle_request_chain
