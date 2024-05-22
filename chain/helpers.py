@@ -42,25 +42,25 @@ class RunnableWithMessageHistory(Runnable):
     
     def invoke(self, input: Dict[str, Any], config: Optional[Dict[str, Any]] = None) -> Any:
         session_id = config["configurable"]["session_id"]
-        history = self.get_session_history(session_id)
+        save_mode = config["configurable"].get("save_mode", "both")
+        history = self.get_session_history(session_id, save_mode)
         
         current_input = input[self.input_messages_key]
         
         if isinstance(current_input, str):
             current_input_message = HumanMessage(content=current_input)
-            # history.add_messages([current_input_message])
         
         input[self.history_messages_key] = history.messages
         
         result = self.runnable.invoke(input, config)
         
         if isinstance(result, AIMessage):
-            if self.context_key and self.context_key in input:
+            if self.context_key and input.get(self.context_key):
                 context = input[self.context_key]
                 result_with_context = AIMessage(content=f"{context}\n{result.content}")
-                history.add_messages([result_with_context])
+                history.add_messages([current_input_message, result_with_context])
             else:
-                history.add_messages([result])
+                history.add_messages([current_input_message, result])
         
         return result
 
