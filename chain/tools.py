@@ -93,7 +93,8 @@ def create_order(data: CreateOrderData) -> Tuple[Order, Decimal]:
         for item in data.items:
             product = Product.objects.get(product_name=item.product_name)
             OrderItem.objects.create(order=order, product=product, quantity=item.quantity, price=item.price)
-            total_price += item.price * item.quantity
+            # total_price += item.price * item.quantity
+            total_price += Decimal(item.price) * Decimal(item.quantity)
         
         # 주문 상태 생성 (OrderStatus는 시그널 핸들러에 의해 자동 생성/업데이트)
         # OrderStatus.objects.create(order=order, status='order')

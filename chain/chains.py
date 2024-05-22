@@ -1,5 +1,6 @@
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel
+from langchain_core.output_parsers import StrOutputParser
 from operator import itemgetter
 
 from .tools import tools, determine_tool_usage, create_order
@@ -11,6 +12,7 @@ from .routes import (
 )
 from .prompts import (
     message_type_prompt,
+    general_inquiry_prompt,
     inquiry_type_prompt,
     request_type_prompt, 
     extract_order_args_prompt, 
@@ -27,21 +29,25 @@ from .tools import fetch_products, fetch_order_details, update_order
 from dotenv import load_dotenv
 load_dotenv()
 
-SESSION_ID = "240521"
+SESSION_ID = "240522"
 model_name = ""
 model = ChatOpenAI()
+specific_model = ChatOpenAI(model="gpt-4o")
 
 
-classify_message_chain = message_type_prompt | model
+classify_message_chain = message_type_prompt | model | StrOutputParser()
 
-classify_message_with_memory = add_memory(classify_message_chain, SESSION_ID, context="사용자 입력 유형", save_mode="both")
+classify_message_with_memory = add_memory(classify_message_chain, SESSION_ID, context="classify_message_with_memory 응답", save_mode="both")
 
 classify_message_with_memory_chain = RunnablePassthrough.assign(msg_type=classify_message_with_memory)
 
+general_inquiry_chain = general_inquiry_prompt | model
+
+general_inquiry_chain_with_memory = add_memory(general_inquiry_chain, SESSION_ID, context="general_inquiry_chain", save_mode="both")
 
 classify_inquiry_chain = inquiry_type_prompt | model
 
-classify_inquiry_with_memory = add_memory(classify_inquiry_chain, SESSION_ID, context="사용자 문의 유형", save_mode="output")
+classify_inquiry_with_memory = add_memory(classify_inquiry_chain, SESSION_ID, context="classify_inquiry_with_memory 응답", save_mode="output")
 
 classify_inquiry_with_memory_chain = RunnablePassthrough.assign(inquiry_type=classify_inquiry_with_memory)
 
@@ -50,7 +56,7 @@ handle_inquiry_chain = classify_inquiry_with_memory_chain | RunnableLambda(inqui
 
 classify_request_chain = request_type_prompt | model
 
-classify_request_with_memory = add_memory(classify_request_chain, SESSION_ID, context="사용자 요청 유형", save_mode="output")
+classify_request_with_memory = add_memory(classify_request_chain, SESSION_ID, context="classify_request_with_memory 응답", save_mode="output")
 
 classify_request_with_memory_chain = RunnablePassthrough.assign(request_type=classify_request_with_memory)
 
@@ -68,13 +74,13 @@ classify_query_chain = RunnablePassthrough.assign(recent_orders=classify_query_p
 # 메모리 필요
 classify_change_or_cancel_chain = order_change_cancel_prompt | model
 
-classify_change_or_cancel_chain_with_memory = add_memory(classify_change_or_cancel_chain, SESSION_ID, context="사용자 승인을 요구한 요청 유형", save_mode="output")
+classify_change_or_cancel_chain_with_memory = add_memory(classify_change_or_cancel_chain, SESSION_ID, context="classify_change_or_cancel_chain_with_memory 응답", save_mode="output")
 
 
 # 메모리 필요
 classify_confirmation_chain = classify_confirmation_prompt | model
 
-classify_confirmation_chain_with_memory = add_memory(classify_confirmation_chain, SESSION_ID, context="사용자 승인 여부", save_mode="output")
+classify_confirmation_chain_with_memory = add_memory(classify_confirmation_chain, SESSION_ID, context="classify_confirmation_chain_with_memory  응답", save_mode="output")
 
 
 confirmation_chain = (
@@ -106,10 +112,11 @@ handle_order_change_chain = (
 # handle_change_cancel_chain = confirmation_chain | execution_or_message_route
 handle_change_cancel_chain = confirmation_chain | RunnablePassthrough.assign(confirm_message=generate_confirm_message_chain)
 
-handle_change_cancel_chain_with_memory = add_memory(handle_change_cancel_chain, SESSION_ID, save_mode="output")
+handle_change_cancel_chain_with_memory = add_memory(handle_change_cancel_chain, SESSION_ID, context="선택 주문 처리 결과", save_mode="both")
 
-full_chain = classify_message_with_memory_chain | inquiry_request_route
+# full_chain = classify_message_with_memory_chain | inquiry_request_route
 
+full_chain = classify_message_with_memory_chain
 #------------------------------------------------------------------------------------------
 # prompt = ChatPromptTemplate.from_messages(
 #     [

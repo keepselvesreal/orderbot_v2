@@ -54,13 +54,12 @@ class RunnableWithMessageHistory(Runnable):
         
         result = self.runnable.invoke(input, config)
         
-        if isinstance(result, AIMessage):
-            if self.context_key and input.get(self.context_key):
-                context = input[self.context_key]
-                result_with_context = AIMessage(content=f"{context}\n{result.content}")
-                history.add_messages([current_input_message, result_with_context])
-            else:
-                history.add_messages([current_input_message, result])
+        if self.context_key and input.get(self.context_key):
+            context = input[self.context_key]
+            result_with_context = AIMessage(content=f"{context}\n{result}")
+            history.add_messages([current_input_message, result_with_context])
+        else:
+            history.add_messages([current_input_message, result])
         
         return result
 

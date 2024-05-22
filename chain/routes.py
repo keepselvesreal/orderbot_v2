@@ -12,18 +12,21 @@ from .tools import (
 
 
 def inquiry_types_route(info):
-
+    from .chains import general_inquiry_chain_with_memory
+    
     print("="*70)
     print("inquiry_types_route 함수로 전달된 데이\n", info)
 
     if "입금 완료" in info["inquiry_type"].content.lower():
         return RunnableLambda(get_payment_completed_orders)
+    elif "주문 완료" in info["inquiry_type"].content:
+        return RunnableLambda(get_completed_orders)
     elif "주문 변경" in info["inquiry_type"].content.lower():
         return RunnableLambda(get_changed_orders)
     elif "주문 취소" in info["inquiry_type"].content.lower():
         return RunnableLambda(get_canceled_orders)
     else:
-        return RunnableLambda(get_completed_orders)
+        return general_inquiry_chain_with_memory
 
 
 def inquiry_request_route(info):

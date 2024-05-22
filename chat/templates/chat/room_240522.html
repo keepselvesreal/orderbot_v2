@@ -37,9 +37,6 @@
     );
 
     let currentOrderId = null; 
-    let currentOrderDetails = null;
-    let currentConfirmMessage = null;
-    let currentExecutionConfirmation = null;
     
     chatSocket.onmessage = function(event) {
         console.log("Message received:", event.data);  // 메시지 수신 로그
@@ -55,8 +52,6 @@
         // confirm_message가 있는 경우 orderId 저장
         if (data.confirm_message) {
             currentOrderId = data.order_id;
-            currentConfirmMessage = data.confirm_message;
-            currentExecutionConfirmation = data.execution_confirmation;
         }
     };
 
@@ -70,26 +65,18 @@
     submitButton.addEventListener("click", function(event) {
         const message = input.value;
         if (message) {
+            <!-- chatSocket.send(JSON.stringify({"message": message})); -->
+
             const data = {
                 message: message,
                 userId: userId,
                 datetime: new Date().toISOString()
             };
 
-            // 서버로 보낼 때 필요한 정보 추가
+            // orderId가 있는 경우 추가
             if (currentOrderId) {
                 data.orderId = currentOrderId;
             }
-            if (currentOrderDetails) {
-                data.orderDetails = currentOrderDetails;
-            }
-            if (currentConfirmMessage) {
-                data.confirmMessage = currentConfirmMessage;
-            }
-            if (currentExecutionConfirmation) {
-                data.executionConfirmation = currentExecutionConfirmation;
-            }
-            
 
             chatSocket.send(JSON.stringify(data));
 
@@ -98,12 +85,6 @@
             
             input.value = '';
             input.focus();
-
-            // 한 번 보낸 후에는 다시 초기화
-            currentOrderId = null;
-            currentOrderDetails = null;
-            currentConfirmMessage = null;
-            currentExecutionConfirmation = null;
         }
     });
 
