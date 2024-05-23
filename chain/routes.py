@@ -1,4 +1,4 @@
-from langchain_core.runnables import RunnableLambda
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 import json
 
 from .tools import (
@@ -17,13 +17,13 @@ def inquiry_types_route(info):
     print("="*70)
     print("inquiry_types_route 함수로 전달된 데이\n", info)
 
-    if "입금 완료" in info["inquiry_type"].content.lower():
+    if "입금 완료" in info["inquiry_type"]:
         return RunnableLambda(get_payment_completed_orders)
-    elif "주문 완료" in info["inquiry_type"].content:
+    elif "주문 완료" in info["inquiry_type"]:
         return RunnableLambda(get_completed_orders)
-    elif "주문 변경" in info["inquiry_type"].content.lower():
+    elif "주문 변경" in info["inquiry_type"]:
         return RunnableLambda(get_changed_orders)
-    elif "주문 취소" in info["inquiry_type"].content.lower():
+    elif "주문 취소" in info["inquiry_type"]:
         return RunnableLambda(get_canceled_orders)
     else:
         return general_inquiry_chain_with_memory
@@ -35,10 +35,11 @@ def inquiry_request_route(info):
     print("="*70)
     print("inquiry_request_route 함수로 전달된 데이터\n", info)
 
-    if "문의" in info["msg_type"].content:
-        return handle_inquiry_chain
-    else:
-        return handle_request_chain
+    # if "문의" in info["msg_type"]:
+    #     return handle_inquiry_chain
+    # else:
+    #     return handle_request_chain
+    return handle_request_chain
     
 
 def requeset_types_route(info):
@@ -47,10 +48,11 @@ def requeset_types_route(info):
     # formatted_info = json.dumps(info, indent=4, ensure_ascii=False)
     print("="*70)
     print("requeset_types_route 함수로 전달된 데이터\n", info)
-    if "주문 요청" in info["request_type"].content:
-        return order_chain
-    else:
-        return classify_query_chain | route_by_order_id
+    # if "주문 요청" in info["request_type"]:
+    #     return order_chain
+    # else:
+    #     return classify_query_chain | route_by_order_id
+    return classify_query_chain | route_by_order_id
     
 
 def route_by_order_id(info):
@@ -60,9 +62,10 @@ def route_by_order_id(info):
     print("="*70)
     print("route_by_order_id 함수로 전달된 데이터\n", info)
 
-    if "조회 가능" in info["recent_orders"].content:
+    if "조회 가능" in info["recent_orders"]:
         # return handle_change_cancel_chain
         return handle_change_cancel_chain_with_memory
+        # return handle_change_cancel_chain
     else:
         return RunnableLambda(fetch_recent_orders)
     
@@ -85,7 +88,7 @@ def execution_or_message_route(info):
     print("="*70)
     print("execution_or_message_route 함수로 전달된 데이터\n", info)
     
-    if "yes" in info["execution_confirmation"].content.lower():
+    if "yes" in info["execution_confirmation"]:
         return RunnableLambda(change_cancel_route)
     else:
-        return generate_confirm_message_chain
+        return RunnablePassthrough.assign(confirm_message=generate_confirm_message_chain)

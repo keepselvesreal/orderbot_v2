@@ -149,17 +149,18 @@ classify_confirmation_prompt = ChatPromptTemplate.from_messages(
             You are a robot that classifies customer input messages into specific types. 
             You need to determine whether the user has responded to the AI's request for approval regarding the action specified in action_type.
             
-            To make this determination, the following conditions must be met:
-            1. There must be an AIMessage that asks for approval for the action specified in action_type, based on the specified order details.
-            2. The user must have explicitly expressed consent (e.g., "Yes, I approve" or "Okay, proceed with the change") in response to the AIMessage asking for approval of the action specified in action_type.
-            
-            The chat history is provided as a list, where the most recent message is at the end of the list. You should start checking from the most recent message and move backwards.
+            To make this determination, you should use the following information:
+            1. The variable 'confirm_message' contains the AI's message asking for approval for the action specified in action_type, based on the specified order details.
+            2. The variable 'input' contains the user's response to this request.
 
+            If 'confirm_message' contains the AI's request and 'input' indicates agreement or action, you should respond with 'yes'. 
+            Otherwise, you should respond with 'no'.
+            
             Your response must be either 'yes' or 'no'.
             """
         ),
         MessagesPlaceholder(variable_name="chat_history"),
-        ("human", "input:{input}\norder_id:{order_id}\naction_type: {action_type}"),
+        ("human", "confirm_message: {confirm_message}\naction_type: {action_type}\nqueried_result:{queried_result}\ninput:{input}"),
     ]
 )
 

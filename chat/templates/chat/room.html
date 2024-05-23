@@ -39,24 +39,30 @@
     let currentOrderId = null; 
     let currentOrderDetails = null;
     let currentConfirmMessage = null;
-    let currentExecutionConfirmation = null;
+    let currentApprovalRequest = null;
     
     chatSocket.onmessage = function(event) {
         console.log("Message received:", event.data);  // 메시지 수신 로그
         const data = JSON.parse(event.data);
         const chat = document.getElementById('chat')
 
-        if (data.recent_orders) {
-            displayRecentOrders(data.recent_orders);
+        let messageContent = data.message;
+
+        // 이중 직렬화된 recent_orders 처리
+        if (messageContent.includes('"recent_orders":')) {
+            const parsedMessage = JSON.parse(messageContent);
+            if (parsedMessage.recent_orders) {
+                displayRecentOrders(parsedMessage.recent_orders);
+            }
         } else {
             appendMessage(data, chat);
         }
 
         // confirm_message가 있는 경우 orderId 저장
-        if (data.confirm_message) {
+        if (data.confirm_message !== null) {
             currentOrderId = data.order_id;
             currentConfirmMessage = data.confirm_message;
-            currentExecutionConfirmation = data.execution_confirmation;
+            currentApprovalRequest = data.approval_request;
         }
     };
 
@@ -86,8 +92,8 @@
             if (currentConfirmMessage) {
                 data.confirmMessage = currentConfirmMessage;
             }
-            if (currentExecutionConfirmation) {
-                data.executionConfirmation = currentExecutionConfirmation;
+            if (currentApprovalRequest) {
+                data.approvalRequest = currentApprovalRequest;
             }
             
 
@@ -144,7 +150,10 @@
             listItem.addEventListener('click', () => {
                 document.querySelectorAll('.order-item').forEach(item => item.classList.remove('selected'));
                 listItem.classList.add('selected');
+
                 // 주문 변경/취소 요청을 서버로 전송
+                currentOrderId = order.id; 
+                currentOrderDetails = orderDetails; 
                 chatSocket.send(JSON.stringify({
                     orderDetails: orderDetails,
                     message: null,

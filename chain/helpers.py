@@ -30,6 +30,7 @@ store = {}
 def get_session_history(session_id: str, save_mode: str = "both") -> BaseChatMessageHistory:
     if session_id not in store:
         store[session_id] = InMemoryHistory(save_mode=save_mode)
+        # store[session_id] = ChatMessageHistory() # 밑에 메모리에 메시지 입력하는 부분도수정해야 함(메소드명 등)
     return store[session_id]
 
 class RunnableWithMessageHistory(Runnable):
@@ -54,13 +55,17 @@ class RunnableWithMessageHistory(Runnable):
         
         result = self.runnable.invoke(input, config)
         
-        if isinstance(result, AIMessage):
-            if self.context_key and input.get(self.context_key):
-                context = input[self.context_key]
-                result_with_context = AIMessage(content=f"{context}\n{result.content}")
-                history.add_messages([current_input_message, result_with_context])
-            else:
-                history.add_messages([current_input_message, result])
+        # if isinstance(result, AIMessage):
+        if self.context_key and input.get(self.context_key):
+            context = input[self.context_key]
+            result_with_context = AIMessage(content=f"{context}\n{result}")
+        else:
+            result_with_context = result
+        
+        if save_mode in ["both", "input"]:
+            history.add_messages([current_input_message])
+        if save_mode in ["both", "output"]:
+            history.add_messages([result_with_context])
         
         return result
 
@@ -87,7 +92,6 @@ def add_memory(runnable, session_id, context="", save_mode="both"):
 def add_action_type(dict):
     inputs = dict["inputs"]
     action_type =  dict["action_type"]
-    action_type = action_type.content
     # action_type = action_type.content
     inputs["action_type"] = action_type
     return inputs
