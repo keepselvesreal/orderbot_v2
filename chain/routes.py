@@ -6,23 +6,29 @@ from .tools import (
     get_payment_completed_orders, 
     get_changed_orders, 
     get_canceled_orders,
-    fetch_recent_orders, 
+    fetch_recent_orders,
+    create_order, 
     cancel_order,
     )
 
 def input_route(info):
-    from .chains import classify_message_with_memory_chain
-    
+    print("="*70)
+    print("input_route 함수로 전달된 데이터\n", info)
+    from .chains import full_chain
+
     if info["request_type"]:
-        return requeset_types_route
-    else: classify_message_with_memory_chain
+        print("="*70)
+        print("requeset_types_route로 바로 가자!!")
+        return RunnableLambda(requeset_types_route)
+    else: 
+        return full_chain
 
 
 def inquiry_types_route(info):
     from .chains import general_inquiry_chain_with_memory
     
     print("="*70)
-    print("inquiry_types_route 함수로 전달된 데이\n", info)
+    print("inquiry_types_route 함수로 전달된 데이터\n", info)
 
     if "입금 완료" in info["inquiry_type"]:
         return RunnableLambda(get_payment_completed_orders)
@@ -50,13 +56,13 @@ def inquiry_request_route(info):
     
 
 def requeset_types_route(info):
-    from .chains import order_chain, classify_query_chain
+    from .chains import handle_order_chain, classify_query_chain
 
     # formatted_info = json.dumps(info, indent=4, ensure_ascii=False)
     print("="*70)
     print("requeset_types_route 함수로 전달된 데이터\n", info)
     if "주문 요청" in info["request_type"]:
-        return order_chain
+        return handle_order_chain # 여기에 확인 메시지 생성, 이에 따른 라우팅 처리 포함된 체인 넣어야
     else:
         return classify_query_chain | route_by_order_id
     # return classify_query_chain | route_by_order_id
@@ -73,7 +79,18 @@ def route_by_order_id(info):
         return RunnableLambda(fetch_recent_orders)
     else:
         return handle_change_cancel_chain_with_memory
+
+
+def order_execution_or_message_route(info):
+    from .chains import generate_order_confirmation_chain 
     
+    print("="*70)
+    print("order_execution_or_message_route 함수로 전달된 데이터\n", info)
+    
+    if "no" in info["execution_confirmation"]:
+        return RunnablePassthrough.assign(confirm_message=generate_order_confirmation_chain)
+    else:
+        return RunnableLambda(create_order) # 기존 order_chain을 여기에 넣어야 할 듯
 
 def change_cancel_route(info):
     from .chains import handle_order_change_chain

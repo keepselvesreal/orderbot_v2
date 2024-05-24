@@ -5,7 +5,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import QuerySet
 from langchain_core.messages import AIMessage
 
-from chain.chains import full_chain, handle_order_change_chain# chain_with_tools_n_history
+from chain.chains import input_dispatcher_chain, full_chain, handle_order_change_chain# chain_with_tools_n_history
 from products.models import Order, OrderItem
 from chain.parsers import OrderDetails
 
@@ -14,6 +14,7 @@ class ChatConsumer(WebsocketConsumer):
     def connect(self):
         self.user = self.scope["user"]
         print(self.user)
+        self.request_type = None
         self.accept()
 
     def disconnect(self, close_code):
@@ -40,6 +41,7 @@ class ChatConsumer(WebsocketConsumer):
             message=message, 
             order_id=order_id, 
             confirm_message=self.confirm_message,
+            request_type=self.request_type
         )
         now = timezone.now()
 
@@ -54,15 +56,16 @@ class ChatConsumer(WebsocketConsumer):
              ensure_ascii=False
              ))
         
-    def orderbot_response(self, user_id, message, order_id=None, confirm_message=None):
+    def orderbot_response(self, user_id, message, order_id=None, confirm_message=None, request_type=None):
         print("="*70)
         print("orderbot_response 진입")
         try:
-            response = full_chain.invoke(
+            response = input_dispatcher_chain.invoke(
                 {"user_id": user_id,
                  "input": message,
                  "order_id": order_id,
                  "confirm_message": confirm_message,
+                 "request_type": request_type,
                  }
             )
             print("="*70)
@@ -79,8 +82,9 @@ class ChatConsumer(WebsocketConsumer):
                     print("="*70)
                     print("confirm_message 키 존재")
                     print("confirm_message키 추출 전 response\n", response)
-                    self.request_type = response["request_type"]
                     self.confirm_message = response["confirm_message"]
+                    self.request_type = response["request_type"]
+                    print("self.request_type 값 ->", self.request_type)
                     self.approval_request = True
                     # self.confirm_message = True
                     print("self.approval_request 값->", self.approval_request)

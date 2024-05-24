@@ -25,6 +25,7 @@ from .prompts import (
 from .parsers import request_type_parser, create_order_parser, order_detail_parser
 from .helpers import add_memory, add_action_type
 from .tools import fetch_products, fetch_order_details, update_order
+from .routes import input_route, order_execution_or_message_route
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -63,10 +64,22 @@ classify_request_with_memory_chain = RunnablePassthrough.assign(request_type=cla
 # 요청 담당 체인(요청 유형 분류 -> 각 요청 유형 별 처리)
 handle_request_chain = classify_request_with_memory_chain | RunnableLambda(requeset_types_route)
 
+# 사용자 승인 여부 판단 체인
+classify_confirmation_chain = classify_confirmation_prompt | model | StrOutputParser()
+classify_confirmation_chain_with_memory = add_memory(classify_confirmation_chain, SESSION_ID, context="", save_mode="output") # 사용자 승인 여부
+# ('주문 변경' 또는 '주문 취소' 진행에 대한) 사용자 승인 여부 판단 체인
+confirmation_chain = RunnablePassthrough.assign(execution_confirmation=classify_confirmation_chain_with_memory)
+
 # 주문 처리에 필요한 인자 추출 체인
-extract_order_args_chain = RunnablePassthrough.assign(products=fetch_products) | extract_order_args_prompt | model | create_order_parser
-# 주문 처리 체인
-order_chain = extract_order_args_chain | create_order
+# extract_order_args_chain = RunnablePassthrough.assign(products=fetch_products) | extract_order_args_prompt | model | create_order_parser
+def make_dict(x):
+    return x.dict()
+# create_order_parser 필요 없이 그냥 앞에 프롬프트를 좀 수정한 후 바로 결과 출력하면 될 듯 
+extract_order_args_chain = RunnablePassthrough.assign(products=fetch_products) | extract_order_args_prompt | model | create_order_parser | RunnableLambda(make_dict)
+# 
+generate_order_confirmation_chain = RunnablePassthrough.assign(queried_result=extract_order_args_chain) | generate_confirm_message_prompt | model | StrOutputParser()
+# 
+handle_order_chain = confirmation_chain | order_execution_or_message_route
 
 # 최근 주문내역 조회 체인
 # order_cancel_chain = RunnablePassthrough.assign(recent_orders=order_cancel_prompt | model )
@@ -76,12 +89,6 @@ classify_query_chain = RunnablePassthrough.assign(recent_orders=classify_query_p
 # classify_change_or_cancel_chain = order_change_cancel_prompt | model | StrOutputParser()
 # classify_change_or_cancel_chain_with_memory = add_memory(classify_change_or_cancel_chain, SESSION_ID, context="classify_change_or_cancel_chain_with_memory 응답", save_mode="output")
 
-# 사용자 승인 여부 판단 체인
-classify_confirmation_chain = classify_confirmation_prompt | model | StrOutputParser()
-classify_confirmation_chain_with_memory = add_memory(classify_confirmation_chain, SESSION_ID, context="", save_mode="output") # 사용자 승인 여부
-
-# '주문 변경' 또는 '주문 취소' 진행에 대한 사용자 승인 여부 판단 체인
-confirmation_chain = RunnablePassthrough.assign(execution_confirmation=classify_confirmation_chain_with_memory)
 
 # 승인 메시지 생성 체인
 generate_confirm_message_chain = RunnablePassthrough.assign(queried_result=fetch_order_details) | generate_confirm_message_prompt | model | StrOutputParser()
@@ -106,5 +113,5 @@ handle_order_change_chain = (
      | RunnableLambda(update_order)) 
 
 # 최종 체인
-# full_chain = classify_message_with_memory_chain | inquiry_request_route
 full_chain = classify_message_with_memory_chain | inquiry_request_route
+input_dispatcher_chain = RunnableLambda(input_route)

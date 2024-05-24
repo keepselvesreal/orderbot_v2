@@ -230,7 +230,7 @@ generate_confirm_message_prompt = ChatPromptTemplate.from_messages(
             You are a robot that generates a confirmation request message based on the request_type and queried_result.
             Create a message to show the queried_result and ask for final confirmation considering request_type.
             The response should be generated in Korean.
-            Make sure to clarify that the queried_result is the order detail the user wants to change or cancel, and this is for final confirmation.
+            Make sure to clarify that the queried_result is the order detail the user wants to place, change or cancel, and this is for final confirmation.
             Based on the request_type, ask the user if they want to proceed with the specified action.
             """
         ),
