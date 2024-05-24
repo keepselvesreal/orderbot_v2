@@ -151,13 +151,29 @@ extract_order_args_prompt = PromptTemplate(
 
     User ID: {user_id}
 
-    User Input: {input}
+    confirm_message: {confirm_message}
 
     Provide only the extracted parameters in the following format:
     {format_instructions}
     """,
-    input_variables=["user_id", "input", "products"],
+    input_variables=["user_id", "confirm_message", "products"],
     partial_variables={"format_instructions": [create_order_parser.get_format_instructions()]},
+)
+
+
+generate_order_confirmation_prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """
+            You are an assistant responsible for generating order confirmation messages. 
+            Your task is to create a clear and concise order confirmation message in Korean based on the provided list of products and the user's input. 
+            Ensure that the message includes all necessary details such as product names, quantities, prices, and any other relevant information from the user input.
+            Summarize the order details and ask the user to confirm if they would like to proceed with the order.
+             """
+        ),
+        ("human", "products:{request_type}\ninput:{input}")
+    ]
 )
 
 

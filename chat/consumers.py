@@ -23,11 +23,12 @@ class ChatConsumer(WebsocketConsumer):
     def receive(self, text_data):
         print("="*70)
         print("클라이언트가 전달한 데이터\n", text_data)
+
         text_data_json = json.loads(text_data)
         message = text_data_json["message"]
         user_id = text_data_json["userId"]
         order_id = text_data_json.get("orderId")
-        self.confirm_message = text_data_json.get("confirmMessage")
+        self.confirm_message = text_data_json.get("confirmMessage") # connect에서 초기화하고 클라이언트에서 받지 않아도 될 듯
         self.approval_request = text_data_json.get("approvalRequest")
 
         if order_id and not self.approval_request:
@@ -55,6 +56,10 @@ class ChatConsumer(WebsocketConsumer):
              },
              ensure_ascii=False
              ))
+        
+        self.request_type = None
+        self.confirm_message = None
+        self.approval_request = None
         
     def orderbot_response(self, user_id, message, order_id=None, confirm_message=None, request_type=None):
         print("="*70)

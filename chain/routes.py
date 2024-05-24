@@ -82,7 +82,7 @@ def route_by_order_id(info):
 
 
 def order_execution_or_message_route(info):
-    from .chains import generate_order_confirmation_chain 
+    from .chains import generate_order_confirmation_chain, order_chain 
     
     print("="*70)
     print("order_execution_or_message_route 함수로 전달된 데이터\n", info)
@@ -90,7 +90,7 @@ def order_execution_or_message_route(info):
     if "no" in info["execution_confirmation"]:
         return RunnablePassthrough.assign(confirm_message=generate_order_confirmation_chain)
     else:
-        return RunnableLambda(create_order) # 기존 order_chain을 여기에 넣어야 할 듯
+        return order_chain # 기존 order_chain을 여기에 넣어야 할 듯
 
 def change_cancel_route(info):
     from .chains import handle_order_change_chain

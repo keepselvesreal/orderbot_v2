@@ -14,7 +14,8 @@ from .prompts import (
     message_type_prompt,
     general_inquiry_prompt,
     inquiry_type_prompt,
-    request_type_prompt, 
+    request_type_prompt,
+    generate_order_confirmation_prompt, 
     extract_order_args_prompt, 
     classify_query_prompt,
     order_change_cancel_prompt,
@@ -75,9 +76,9 @@ confirmation_chain = RunnablePassthrough.assign(execution_confirmation=classify_
 def make_dict(x):
     return x.dict()
 # create_order_parser 필요 없이 그냥 앞에 프롬프트를 좀 수정한 후 바로 결과 출력하면 될 듯 
-extract_order_args_chain = RunnablePassthrough.assign(products=fetch_products) | extract_order_args_prompt | model | create_order_parser | RunnableLambda(make_dict)
+generate_order_confirmation_chain = RunnablePassthrough.assign(products=fetch_products) | generate_order_confirmation_prompt | model | StrOutputParser()
 # 
-generate_order_confirmation_chain = RunnablePassthrough.assign(queried_result=extract_order_args_chain) | generate_confirm_message_prompt | model | StrOutputParser()
+order_chain = RunnablePassthrough.assign(products=fetch_products) | extract_order_args_prompt | model | create_order_parser | create_order
 # 
 handle_order_chain = confirmation_chain | order_execution_or_message_route
 
