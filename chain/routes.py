@@ -10,6 +10,13 @@ from .tools import (
     cancel_order,
     )
 
+def input_route(info):
+    from .chains import classify_message_with_memory_chain
+    
+    if info["request_type"]:
+        return requeset_types_route
+    else: classify_message_with_memory_chain
+
 
 def inquiry_types_route(info):
     from .chains import general_inquiry_chain_with_memory
@@ -35,11 +42,11 @@ def inquiry_request_route(info):
     print("="*70)
     print("inquiry_request_route 함수로 전달된 데이터\n", info)
 
-    # if "문의" in info["msg_type"]:
-    #     return handle_inquiry_chain
-    # else:
-    #     return handle_request_chain
-    return handle_request_chain
+    if "문의" in info["msg_type"]:
+        return handle_inquiry_chain
+    else:
+        return handle_request_chain
+    # return handle_request_chain
     
 
 def requeset_types_route(info):
@@ -48,26 +55,24 @@ def requeset_types_route(info):
     # formatted_info = json.dumps(info, indent=4, ensure_ascii=False)
     print("="*70)
     print("requeset_types_route 함수로 전달된 데이터\n", info)
-    # if "주문 요청" in info["request_type"]:
-    #     return order_chain
-    # else:
-    #     return classify_query_chain | route_by_order_id
-    return classify_query_chain | route_by_order_id
+    if "주문 요청" in info["request_type"]:
+        return order_chain
+    else:
+        return classify_query_chain | route_by_order_id
+    # return classify_query_chain | route_by_order_id
     
 
 def route_by_order_id(info):
     # handle_change_cancel_chain을 주문 변경 또는 취소 요청에 대한 확인 메시지 작성 체인으로 수정함
-    from .chains import handle_change_cancel_chain, handle_change_cancel_chain_with_memory
+    from .chains import handle_change_cancel_chain_with_memory
     
     print("="*70)
     print("route_by_order_id 함수로 전달된 데이터\n", info)
 
-    if "조회 가능" in info["recent_orders"]:
-        # return handle_change_cancel_chain
-        return handle_change_cancel_chain_with_memory
-        # return handle_change_cancel_chain
-    else:
+    if "조회 불가능" in info["recent_orders"]:
         return RunnableLambda(fetch_recent_orders)
+    else:
+        return handle_change_cancel_chain_with_memory
     
 
 def change_cancel_route(info):
@@ -76,19 +81,19 @@ def change_cancel_route(info):
     print("="*70)
     print("change_cancel_route 함수로 전달된 데이터\n", info)
     
-    if "주문 변경" in info["action_type"]:
+    if "주문 변경" in info["request_type"]:
         return handle_order_change_chain
-    elif "주문 취소" in info["action_type"]:
+    elif "주문 취소" in info["request_type"]:
         return RunnableLambda(cancel_order)
     
 
 def execution_or_message_route(info):
     from .chains import generate_confirm_message_chain
-    
+
     print("="*70)
     print("execution_or_message_route 함수로 전달된 데이터\n", info)
     
-    if "yes" in info["execution_confirmation"]:
-        return RunnableLambda(change_cancel_route)
-    else:
+    if "no" in info["execution_confirmation"]:
         return RunnablePassthrough.assign(confirm_message=generate_confirm_message_chain)
+    else:
+        return RunnableLambda(change_cancel_route)

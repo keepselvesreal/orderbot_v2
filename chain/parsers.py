@@ -3,6 +3,11 @@ from typing import List
 from langchain_core.output_parsers import PydanticOutputParser
 from decimal import Decimal
 
+
+class RequestType(BaseModel):
+    request_type: str = Field(..., description="The type of order-related request, classified as either '주문 요청' for new order requests, '주문 변경 요청' for order change requests, or '주문 취소 요청' for order cancellation requests.")
+request_type_parser = PydanticOutputParser(pydantic_object=RequestType)
+
 class OrderItem(BaseModel):
     product_name: str = Field(..., description="Name of the product")
     quantity: int = Field(..., gt=0, description="Quantity of the product")
@@ -14,7 +19,6 @@ class OrderDetails(BaseModel):
     created_at: str = Field(description="The order creation date")
     order_status: str = Field(description="The current status of the order")
     items: List[OrderItem] = Field(description="The items in the order")
-
 
 order_detail_parser = PydanticOutputParser(pydantic_object=OrderDetails)
 
