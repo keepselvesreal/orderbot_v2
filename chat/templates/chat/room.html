@@ -38,6 +38,7 @@
 
     let currentOrderId = null; 
     let currentOrderDetails = null;
+    let currentRequestType = null;
     let currentConfirmMessage = null;
     let currentApprovalRequest = null;
     
@@ -61,6 +62,7 @@
         // confirm_message가 있는 경우 orderId 저장
         if (data.confirm_message !== null) {
             currentOrderId = data.order_id;
+            currentRequestType = data.request_type
             currentConfirmMessage = data.confirm_message;
             currentApprovalRequest = data.approval_request;
         }
@@ -86,8 +88,8 @@
             if (currentOrderId) {
                 data.orderId = currentOrderId;
             }
-            if (currentOrderDetails) {
-                data.orderDetails = currentOrderDetails;
+            if (currentRequestType) {
+                data.requestType = currentRequestType;
             }
             if (currentConfirmMessage) {
                 data.confirmMessage = currentConfirmMessage;

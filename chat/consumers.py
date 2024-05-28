@@ -14,7 +14,6 @@ class ChatConsumer(WebsocketConsumer):
     def connect(self):
         self.user = self.scope["user"]
         print(self.user)
-        self.request_type = None
         self.accept()
 
     def disconnect(self, close_code):
@@ -28,6 +27,7 @@ class ChatConsumer(WebsocketConsumer):
         message = text_data_json["message"]
         user_id = text_data_json["userId"]
         order_id = text_data_json.get("orderId")
+        self.request_type= text_data_json.get("requestType")
         self.confirm_message = text_data_json.get("confirmMessage") # connect에서 초기화하고 클라이언트에서 받지 않아도 될 듯
         self.approval_request = text_data_json.get("approvalRequest")
 
@@ -40,9 +40,9 @@ class ChatConsumer(WebsocketConsumer):
         response_message = self.orderbot_response(
             user_id=user_id, 
             message=message, 
-            order_id=order_id, 
+            order_id=order_id,
+            request_type = self.request_type,
             confirm_message=self.confirm_message,
-            request_type=self.request_type
         )
         now = timezone.now()
 
@@ -51,8 +51,9 @@ class ChatConsumer(WebsocketConsumer):
              "message": response_message,
              "datetime": now.isoformat(),
              "order_id": order_id,
+             "request_type": self.request_type,
              "confirm_message": self.confirm_message,
-             "approval_request": self.approval_request
+             "approval_request": self.approval_request,
              },
              ensure_ascii=False
              ))
@@ -60,8 +61,11 @@ class ChatConsumer(WebsocketConsumer):
         self.request_type = None
         self.confirm_message = None
         self.approval_request = None
+        print("="*70)
+        print("self.confirm_message 초기화 ->", self.confirm_message)
+
         
-    def orderbot_response(self, user_id, message, order_id=None, confirm_message=None, request_type=None):
+    def orderbot_response(self, user_id, message, order_id=None, request_type=None, confirm_message=None):
         print("="*70)
         print("orderbot_response 진입")
         try:
