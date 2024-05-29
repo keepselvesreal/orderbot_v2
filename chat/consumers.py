@@ -14,7 +14,6 @@ class ChatConsumer(WebsocketConsumer):
     def connect(self):
         self.user = self.scope["user"]
         print(self.user)
-        self.request_type = None
         self.accept()
 
     def disconnect(self, close_code):
@@ -28,6 +27,7 @@ class ChatConsumer(WebsocketConsumer):
         message = text_data_json["message"]
         user_id = text_data_json["userId"]
         order_id = text_data_json.get("orderId")
+        self.request_type = text_data_json.get("requestType")
         self.confirm_message = text_data_json.get("confirmMessage") # connect에서 초기화하고 클라이언트에서 받지 않아도 될 듯
         self.approval_request = text_data_json.get("approvalRequest")
 
@@ -36,7 +36,7 @@ class ChatConsumer(WebsocketConsumer):
             print("order_id 할당됨!\n", order_id)
             message = "해당 주문 선택"
             # message = ""
-        
+
         response_message = self.orderbot_response(
             user_id=user_id, 
             message=message, 
@@ -51,19 +51,17 @@ class ChatConsumer(WebsocketConsumer):
              "message": response_message,
              "datetime": now.isoformat(),
              "order_id": order_id,
+             "request_type": self.request_type,
              "confirm_message": self.confirm_message,
              "approval_request": self.approval_request
              },
              ensure_ascii=False
              ))
         
-        self.request_type = None
-        self.confirm_message = None
-        self.approval_request = None
-        
     def orderbot_response(self, user_id, message, order_id=None, confirm_message=None, request_type=None):
         print("="*70)
         print("orderbot_response 진입")
+        print("request_type, confirmation_type -> ", request_type, confirm_message)
         try:
             response = input_dispatcher_chain.invoke(
                 {"user_id": user_id,
@@ -94,6 +92,15 @@ class ChatConsumer(WebsocketConsumer):
                     # self.confirm_message = True
                     print("self.approval_request 값->", self.approval_request)
                     response = self.confirm_message
+                elif "execution" in response:
+                    print("="*70)
+                    print("execution 키 존재")
+                    print("execution 키 추출 전 response\n", response)
+                    response = response["result"]
+                    response = response.to_dict()
+                    self.request_type = None
+                    self.confirm_message = None
+                    self.approval_request = None
 
                 response = json.dumps(response, ensure_ascii=False)
             

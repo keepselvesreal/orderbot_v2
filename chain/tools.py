@@ -100,7 +100,9 @@ def create_order(data: CreateOrderData) -> Tuple[Order, Decimal]:
         # OrderStatus.objects.create(order=order, status='order')
         
         # return order, total_price 정상 동작 확인했으나 다른 함수와 통일 위해 total_price 삭제
-        return order
+        output = {"result": order, "execution": "yes"}
+        # return order
+        return output
     
 
 def update_order(order_data):
@@ -118,7 +120,7 @@ def update_order(order_data):
             order.order_status = order_data['order_status']
             order.save()
 
-            # 기존 주문 항목 삭제
+            # 기존 주문 항목 삭제 -> 삭제 대신 주문 상태 변경으로 수정하기
             OrderItem.objects.filter(order=order).delete()
 
             # 새로운 주문 항목 추가
@@ -130,7 +132,8 @@ def update_order(order_data):
                     quantity=item_data['quantity'],
                     price=item_data['price']
                 )
-            return {"status": "success", "message": "Order updated successfully"}
+            # return {"status": "success", "message": "Order updated successfully"}
+            {"result": "Order updated successfully", "execution": "yes"}
     except ObjectDoesNotExist as e:
         return {"status": "error", "message": str(e)}
     except Exception as e:
@@ -167,7 +170,9 @@ def cancel_order(data: dict) -> dict:
             # 주문 상태 생성 (OrderStatus는 시그널 핸들러에 의해 자동 생성/업데이트)
             # OrderStatus.objects.create(order=order, status='order_canceled')
             
-            return order
+            output = {"result": order, "execution": "yes"}
+            # return order
+            return output
     except Order.DoesNotExist:
         raise ValueError(f"Order with ID {order_id} does not exist")
 

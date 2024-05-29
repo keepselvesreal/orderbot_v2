@@ -3,26 +3,33 @@
 {% block title %}주문 with AI{% endblock %}
 
 {% block content %}
-    <div id="chat">        
-    </div>
-    <div id="recent-orders" style="display: none;">
-        <h3>최근 주문 내역</h3>
-        <ul id="order-list"></ul>
-    </div>
-    <div id="chat-input">
-        <input id="chat-message-input" type="text">
-        <input id="chat-message-submit" type="submit" value="전송">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-8-offset-md-2">
+                <div id="chat" class="border p-3 mb-3" style="height: 400px; overflow-y: auto;"></div>
+                <div id="recent-orders" class="mb-3" style="display: none;">
+                    <h3>최근 주문 내역</h3>
+                    <ul id="order-list" class="list-group"></ul>
+                </div>
+                <div id="chat-input" class="input-group mb-3 justify-content-center">
+                    <input id="chat-message-input" type="text" class="formr-control" style="width: 80%;" placeholder="메시지를 입력하세요">
+                    <button id="chat-message-submit" class="btn btn-primary">전송</button>
+                </div>
+            </div>
+        </div>
     </div>
 {% endblock %}
 
 {% block include_css %}
     {% load static %}
     <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+Knujsl7/5hb7ie1TO5y6mAbviu1RI5B+YkLDz/5qFaRi7j" crossorigin="anonymous">
 {% endblock %}
 
 {% block include_js %}
     {{ user_id|json_script:"user-id" }}
     {{ request.user.username|json_script:"request-user" }}
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/js/bootstrap.bundle.min.js" integrity="sha384-ka5u10Iv4Db7j6QCdXxAwEQQtRF4ETtZkMF5X0LMU18zV2ZIB0Czbg1oTr5uB8sS" crossorigin="anonymous"></script>
 {% endblock %}
 
 {% block domready %}
@@ -38,6 +45,7 @@
 
     let currentOrderId = null; 
     let currentOrderDetails = null;
+    let currentRequestType = null;
     let currentConfirmMessage = null;
     let currentApprovalRequest = null;
     
@@ -60,7 +68,9 @@
 
         // confirm_message가 있는 경우 orderId 저장
         if (data.confirm_message !== null) {
+            console.log("confirm_message 존재!", data.confirm_message)
             currentOrderId = data.order_id;
+            currentRequestType = data.request_type;
             currentConfirmMessage = data.confirm_message;
             currentApprovalRequest = data.approval_request;
         }
@@ -86,8 +96,8 @@
             if (currentOrderId) {
                 data.orderId = currentOrderId;
             }
-            if (currentOrderDetails) {
-                data.orderDetails = currentOrderDetails;
+            if (currentRequestType) {
+                data.requestType = currentRequestType;
             }
             if (currentConfirmMessage) {
                 data.confirmMessage = currentConfirmMessage;
@@ -96,7 +106,7 @@
                 data.approvalRequest = currentApprovalRequest;
             }
             
-
+            console.log("전송 데이터\n", data)
             chatSocket.send(JSON.stringify(data));
 
             const chat = document.getElementById('chat');
@@ -107,9 +117,11 @@
 
             // 한 번 보낸 후에는 다시 초기화
             currentOrderId = null;
-            currentOrderDetails = null;
+            currentRequestType = null;
             currentConfirmMessage = null;
-            currentExecutionConfirmation = null;
+            currentApprovalRequest = null;
+            console.log("할당값 초기화\n", currentOrderId, currentRequestType, currentConfirmMessage, currentApprovalRequest)
+            
         }
     });
 
