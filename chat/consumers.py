@@ -27,6 +27,7 @@ class ChatConsumer(WebsocketConsumer):
         message = text_data_json["message"]
         user_id = text_data_json["userId"]
         order_id = text_data_json.get("orderId")
+
         self.request_type = text_data_json.get("requestType")
         self.confirm_message = text_data_json.get("confirmMessage") # connect에서 초기화하고 클라이언트에서 받지 않아도 될 듯
         self.approval_request = text_data_json.get("approvalRequest")
@@ -40,9 +41,9 @@ class ChatConsumer(WebsocketConsumer):
         response_message = self.orderbot_response(
             user_id=user_id, 
             message=message, 
-            order_id=order_id, 
+            order_id=order_id,
+            request_type = self.request_type,
             confirm_message=self.confirm_message,
-            request_type=self.request_type
         )
         now = timezone.now()
 
@@ -53,7 +54,7 @@ class ChatConsumer(WebsocketConsumer):
              "order_id": order_id,
              "request_type": self.request_type,
              "confirm_message": self.confirm_message,
-             "approval_request": self.approval_request
+             "approval_request": self.approval_request,
              },
              ensure_ascii=False
              ))
