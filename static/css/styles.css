@@ -21,3 +21,7 @@
 .nav-item .nav-link {
     white-space: nowrap; /* 줄바꿈 방지 */
 }
+
+.message-content {
+    white-space: pre-wrap;
+}

@@ -31,14 +31,15 @@ from .routes import input_route, order_execution_or_message_route
 from dotenv import load_dotenv
 load_dotenv()
 
-SESSION_ID = "240522"
+SESSION_ID = "240606"
+# from ..chat import SESSION_ID
 model_name = ""
 model = ChatOpenAI()
 specific_model = ChatOpenAI(model="gpt-4o")
 
 
 # 문의 or 요청 분류 체인
-classify_message_chain = message_type_prompt | model | StrOutputParser()
+classify_message_chain = message_type_prompt | model
 classify_message_with_memory = add_memory(classify_message_chain, SESSION_ID, context="", save_mode="both") # "입력 메시지 유형"
 classify_message_with_memory_chain = RunnablePassthrough.assign(msg_type=classify_message_with_memory)
 
@@ -46,11 +47,11 @@ classify_message_with_memory_chain = RunnablePassthrough.assign(msg_type=classif
 # ==================
 # 문의 담당 하위 체인
 # 일반 문의
-general_inquiry_chain = general_inquiry_prompt | model | StrOutputParser()
+general_inquiry_chain = general_inquiry_prompt | model
 general_inquiry_chain_with_memory = add_memory(general_inquiry_chain, SESSION_ID, context="", save_mode="output") # 일반 문의 응답 내용
 
 # 문의 유형 분류 체인
-classify_inquiry_chain = inquiry_type_prompt | model | StrOutputParser()
+classify_inquiry_chain = inquiry_type_prompt | model
 classify_inquiry_with_memory = add_memory(classify_inquiry_chain, SESSION_ID, context="", save_mode="output") # 문의 유형
 classify_inquiry_with_memory_chain = RunnablePassthrough.assign(inquiry_type=classify_inquiry_with_memory)
 # 문의 담당 체인(문의 유형 분류 -> 각 문의 유형 별 처리)
@@ -59,14 +60,14 @@ handle_inquiry_chain = classify_inquiry_with_memory_chain | RunnableLambda(inqui
 
 # ==================
 # 요청 유형 분류 체인
-classify_request_chain = request_type_prompt | model | StrOutputParser() # | request_type_parser
+classify_request_chain = request_type_prompt | model 
 classify_request_with_memory = add_memory(classify_request_chain, SESSION_ID, context="", save_mode="output") # 요청 유형
 classify_request_with_memory_chain = RunnablePassthrough.assign(request_type=classify_request_with_memory)
 # 요청 담당 체인(요청 유형 분류 -> 각 요청 유형 별 처리)
 handle_request_chain = classify_request_with_memory_chain | RunnableLambda(requeset_types_route)
 
 # 사용자 승인 여부 판단 체인
-classify_confirmation_chain = classify_confirmation_prompt | model | StrOutputParser()
+classify_confirmation_chain = classify_confirmation_prompt | model 
 classify_confirmation_chain_with_memory = add_memory(classify_confirmation_chain, SESSION_ID, context="", save_mode="output") # 사용자 승인 여부
 # ('주문 변경' 또는 '주문 취소' 진행에 대한) 사용자 승인 여부 판단 체인
 confirmation_chain = RunnablePassthrough.assign(execution_confirmation=classify_confirmation_chain_with_memory)
@@ -76,7 +77,7 @@ confirmation_chain = RunnablePassthrough.assign(execution_confirmation=classify_
 def make_dict(x):
     return x.dict()
 # create_order_parser 필요 없이 그냥 앞에 프롬프트를 좀 수정한 후 바로 결과 출력하면 될 듯 
-generate_order_confirmation_chain = RunnablePassthrough.assign(products=fetch_products) | generate_order_confirmation_prompt | model | StrOutputParser()
+generate_order_confirmation_chain = RunnablePassthrough.assign(products=fetch_products) | generate_order_confirmation_prompt | model
 # 
 order_chain = RunnablePassthrough.assign(products=fetch_products) | extract_order_args_prompt | model | create_order_parser | create_order
 # 
@@ -92,7 +93,7 @@ classify_query_chain = RunnablePassthrough.assign(recent_orders=classify_query_p
 
 
 # 승인 메시지 생성 체인
-generate_confirm_message_chain = RunnablePassthrough.assign(queried_result=fetch_order_details) | generate_confirm_message_prompt | model | StrOutputParser()
+generate_confirm_message_chain = RunnablePassthrough.assign(queried_result=fetch_order_details) | generate_confirm_message_prompt | model
 
 # '주문 변경' 또는 '주문 처리' 담당 체인(종합) 
 handle_change_cancel_chain = confirmation_chain | execution_or_message_route
