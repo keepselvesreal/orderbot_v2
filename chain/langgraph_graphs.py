@@ -78,7 +78,11 @@ def route_order_inquiry(
     "leave_skill",
     "__end__"
 ]:
+    print("-"*77)
+    print("route_order_inquiry 진입")
+    print("state\n", state)
     route = tools_condition(state)
+    
     if route == END:
         return END
     tool_calls = state["messages"][-1].tool_calls
@@ -103,13 +107,16 @@ builder.add_node(
 )
 builder.add_edge("request_tools", "order_request")
 
-def route_order_inquiry(
+def route_order_request(
         state: State,
 ) -> Literal[
     "request_tools",
     "leave_skill",
     "__end__"
 ]:
+    print("-"*77)
+    print("route_order_request 진입")
+    print("state\n", state)
     route = tools_condition(state)
     if route == END:
         return END
@@ -119,7 +126,7 @@ def route_order_inquiry(
         return "leave_skill"
     return "request_tools"
 
-builder.add_conditional_edges("order_request", route_order_inquiry)
+builder.add_conditional_edges("order_request", route_order_request)
 
 
 # Primary assistant
@@ -137,6 +144,10 @@ def route_primary_assistant(
     "enter_order_request",
     "__end__",
 ]:
+    print("-"*77)
+    print("route_primary_assistant 진입")
+    print("state\n", state)
+
     route = tools_condition(state)
     if route == END:
         return END
@@ -171,6 +182,9 @@ def route_to_workflow(
     "order_request",
 ]:
     """If we are in a delegated state, route directly to the appropriate assistant."""
+    print("-"*77)
+    print("route_to_workflow 진입")
+    print("state\n", state)
     dialog_state = state.get("dialog_state")
     if not dialog_state:
         return "primary_assistant"

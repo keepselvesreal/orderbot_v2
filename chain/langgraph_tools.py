@@ -1,24 +1,30 @@
+from typing import List
+from decimal import Decimal
+
+from langchain_core.runnables import ensure_config
 from langchain_core.tools import tool
+from django.db import transaction
+from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
+
+from products.models import Product, Order, OrderItem
 
 
 @tool
-def fetch_user_information(user_id: str):
+def fetch_user_information(user_id):
     """
     Fetch user information
     This function retrieves user information from the database
     """
     print("-"*77)
     print("fetch_user_information 진입")
-    print("user_id: ",user_id)
-    temp_info = """
-    name: nadle
-    사용자 이름: nadle
-    구매 일자: 2024.06.18
-    구매 상품:
-    무지개 백설기 (12,000원) 3개
-    개별 모듬팩 (5,000원) 2개
-    떡케익 (25,000원) 1개
-    총 구매 금액: 71,000원
+    # config = ensure_config()  # Fetch from the context
+    # configuration = config.get("configurable", {})
+    # user_id = configuration.get("user_id", None)
+    # print("config\n", config)
+   
+    temp_info = f"""
+    user_id: {user_id}
     """
     return temp_info
 
@@ -46,12 +52,73 @@ def lookup_policy(message: str):
 
 
 @tool
-def order():
+def fetch_product_list():
+    """
+    Fetchs a list of products.
+    This function retrieves and displays a list of products. 
+    """
+
+    product_list = """
+    product_list
+
+    [
+        {
+            "product_name": "떡케익5호",
+            "quantity": 1,
+            "price": 54000
+        },
+        {
+            "product_name": "무지개 백설기 케익",
+            "quantity": 1,
+            "price": 51500
+        },
+        {
+            "product_name": "미니 백설기",
+            "quantity": 35,
+            "price": 31500
+        },
+        {
+            "product_name": "개별 모듬팩",
+            "quantity": 1,
+            "price": 13500
+        }
+    ]
+    """
+    return product_list
+
+@tool
+def create_order(user_id: int, items :list[dict[str, str | int | float]]):
     """
     Places a new order.
     This function processes a new order request and confirms
+
+    Args:
+        user_id (int): The ID of the user placing the order.
+        items (list[dict[str, str | int | float]]): A list of dictionaries representing the order details. Each dictionary has the following keys:
+            - "product_name": The name of the product (str)
+            - "quantity": The quantity of the product (int)
+            - "price": The price of the product (float)
+
     """
-    return "주문 완료"
+    print("-"*70)
+    print("create_order 진입")
+    
+    with transaction.atomic():
+        # User 객체 가져오기
+        user = User.objects.get(id=user_id)
+        
+        # 주문 생성
+        order = Order.objects.create(user=user)
+        
+        # 주문 상품 생성
+        total_price = Decimal('0.00')
+        for item in items:
+            product = Product.objects.get(product_name=item["product_name"])
+            # OrderItem.objects.create(order=order, product=product, quantity=item["quantity"], price=item["price"])
+            order.order_items.create(product=product, quantity=item["quantity"], price=item["price"])
+            total_price += Decimal(item["price"]) * Decimal(item["quantity"])
+
+        return order
 
 @tool
 def change_order():
@@ -70,20 +137,28 @@ def cancel_order():
     return "주문 취소 완료"
 
 @tool
-def view_order(state):
+def fetch_recent_order(user_id):
     """
-    Views the details of a specific order.
+    Fetches the details of a specific order.
     This function retrieves and returns the details of an order.
+    
+    Args:
+    user_id (int): The unique identifier of the user whose recent order details are to be fetched.
+
+    Returns:
+        dict: A dictionary containing the details of the most recent order placed by the specified user.
     """
-    from products.models import Order, OrderItem
-    from django.core.exceptions import ObjectDoesNotExist
-    user_id = state["user_info"]
+    print("-"*77)
+    print("fetch_recent_order 진입")
+    print("전달 받은 인자: ", user_id)
 
     try:
-        orders = Order.objects.filter(user_id=user_id).order_by('-created_at')[:5]
+        orders = Order.objects.filter(user__id=user_id).order_by('-created_at')[:5]
+        print("orders\n", orders)
         recent_orders = []
         for order in orders:
-            order_items = OrderItem.objects.filter(order=order)
+            order_items = order.order_items.all()
+            print("order_items\n", order_items)
             items_details = [
                 {
                     "product_name": item.product.product_name,
@@ -100,11 +175,11 @@ def view_order(state):
         
         return recent_orders
     except ObjectDoesNotExist:
-        return []
+        return "ObjectDoesNotExist" # 임시
     # return "주문 조회 완료"
 
 @tool
-def view_change_order():
+def fetch_change_order():
     """
     Views the details of a modified order.
     This function retrieves and returns the details of the changes made to an order.
@@ -112,7 +187,7 @@ def view_change_order():
     return "주문 변경 조회 완료"
 
 @tool
-def view_cancel_order():
+def fetch_cancel_order():
     """
     Views the details of a canceled order.
     This function retrieves and returns the details of a canceled order.
@@ -153,9 +228,16 @@ class ToOrderInquiryAssistant(BaseModel):
     order_id: int = Field(description="The ID of the order to query.")
     request: str = Field(description="Any necessary follow-up questions the querying assistant should clarify before proceeding.")
 
+
 class ToOrderRequestAssistant(BaseModel):
     """Transfers work to a specialized assistant to handle order placements, modifications, or cancellations."""
 
     order_id: int = Field(description="The ID of the order to update.")
     action: str = Field(description="The action to perform: 'order', 'change_order', 'cancel_order'.")
     request: str = Field(description="Any additional information or requests from the user regarding the order.")
+
+
+class OrderItem(BaseModel):
+    product_name: str = Field(..., description="Name of the product")
+    quantity: int = Field(..., gt=0, description="Quantity of the product")
+    price: float = Field(..., description="Price of the product")
