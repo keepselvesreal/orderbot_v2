@@ -51,7 +51,6 @@ def lookup_policy(message: str):
     return temp_info
 
 
-@tool
 def fetch_product_list():
     """
     Fetchs a list of products.
@@ -176,7 +175,7 @@ def fetch_recent_order(user_id):
         return recent_orders
     except ObjectDoesNotExist:
         return "ObjectDoesNotExist" # 임시
-    # return "주문 조회 완료"
+    
 
 @tool
 def fetch_change_order():
@@ -221,7 +220,7 @@ class CompleteOrEscalate(BaseModel):
             },
         }
 
-# order_request.py로 옮길 것을 제안
+
 class ToOrderInquiryAssistant(BaseModel):
     """Transfers work to a specialized assistant to handle order queries."""
 
@@ -229,15 +228,16 @@ class ToOrderInquiryAssistant(BaseModel):
     request: str = Field(description="Any necessary follow-up questions the querying assistant should clarify before proceeding.")
 
 
-class ToOrderRequestAssistant(BaseModel):
-    """Transfers work to a specialized assistant to handle order placements, modifications, or cancellations."""
+# order_request.py로 옮길 것을 제안
+class ToOrderUpdateAssistant(BaseModel):
+    """Transfers work to a specialized assistant to handle order chnage or order cancel."""
 
-    order_id: int = Field(description="The ID of the order to update.")
-    action: str = Field(description="The action to perform: 'order', 'change_order', 'cancel_order'.")
-    request: str = Field(description="Any additional information or requests from the user regarding the order.")
+    user_id: int = Field(description="The unique identifier of the user")
+    request: str = Field(description="Any necessary follow-up questions the order update assistant should clarify before proceeding.")
 
 
-class OrderItem(BaseModel):
-    product_name: str = Field(..., description="Name of the product")
-    quantity: int = Field(..., gt=0, description="Quantity of the product")
-    price: float = Field(..., description="Price of the product")
+class ToOrderAssistant(BaseModel):
+    """Transfers work to a specialized assistant to handle new order creation."""
+
+    user_id: int = Field(description="The unique identifier of the user")
+    request: str = Field(description="Any necessary follow-up questions the order assistant should clarify before proceeding.")

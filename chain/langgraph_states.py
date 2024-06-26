@@ -19,10 +19,15 @@ class State(TypedDict):
     dialog_state: Annotated[
             list[
                 Literal[
-                    "assistant",
-                    "query",
-                    "requset",
+                    "order_inquiry",
+                    "order_update",
+                    "order_create",
                 ]
             ],
             update_dialog_stack,
         ]
+    order_id: int = None 
+    orders: str = None
+    product_presentation: bool = False
+    user_approval: bool = False
+    task_completed: bool = False
