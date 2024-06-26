@@ -69,28 +69,29 @@ def route_to_workflow(
 builder.add_conditional_edges("fetch_user_info", route_to_workflow)
 
 
-# def pop_dialog_state(state: State) -> dict:
-#     """Pop the dialog stack and return to the main assistant.
+# order_inquiry sub-graph에서 사용
+def pop_dialog_state(state: State) -> dict:
+    """Pop the dialog stack and return to the main assistant.
 
-#     This lets the full graph explicitly track the dialog flow and delegate control
-#     to specific sub-graphs.
-#     """
-#     messages = []
-#     if state["messages"][-1].tool_calls:
-#         # Note: Doesn't currently handle the edge case where the llm performs parallel tool calls
-#         messages.append(
-#             ToolMessage(
-#                 content="Resuming dialog with the host assistant. Please reflect on the past conversation and assist the user as needed.",
-#                 tool_call_id=state["messages"][-1].tool_calls[0]["id"],
-#             )
-#         )
-#     return {
-#         "dialog_state": "pop",
-#         "messages": messages,
-#     }
+    This lets the full graph explicitly track the dialog flow and delegate control
+    to specific sub-graphs.
+    """
+    messages = []
+    if state["messages"][-1].tool_calls:
+        # Note: Doesn't currently handle the edge case where the llm performs parallel tool calls
+        messages.append(
+            ToolMessage(
+                content="Resuming dialog with the host assistant. Please reflect on the past conversation and assist the user as needed.",
+                tool_call_id=state["messages"][-1].tool_calls[0]["id"],
+            )
+        )
+    return {
+        "dialog_state": "pop",
+        "messages": messages,
+    }
 
-# builder.add_node("leave_skill", pop_dialog_state)
-# builder.add_edge("leave_skill", "primary_assistant")
+builder.add_node("leave_skill", pop_dialog_state)
+builder.add_edge("leave_skill", "primary_assistant")
 
 
 #--------------------------------------------------------------------------------------------------------------------------------------
@@ -139,7 +140,7 @@ def present_product_list(state: State):
                                                      "product_list": product_list})
     response = response.content
 
-    return {"messages": response} 
+    return {"messages": response, "product_presentation": True} 
 
 builder.add_node("present_product_list", present_product_list)
 builder.add_edge("present_product_list", END)
@@ -327,4 +328,5 @@ builder.add_conditional_edges(
 memory = SqliteSaver.from_conn_string(":memory:")
 orderbot_graph = builder.compile(
     checkpointer=memory,
+    interrupt_before=[create_tool]
 )

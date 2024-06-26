@@ -1,13 +1,13 @@
 import json
+import uuid
 
 from channels.generic.websocket import WebsocketConsumer
 from django.utils import timezone
 from langchain_core.messages import ToolMessage
 
 from chain.langgraph_graphs import orderbot_graph
-from chain.langgraph_utilities import extract_message_from_event
 
-import uuid
+
 thread_id = str(uuid.uuid4())
 config = {
     "configurable": {
@@ -47,6 +47,7 @@ class ChatConsumer(WebsocketConsumer):
                                             config, stream_mode="values")
             # response = output["messages"][-1].content
         else:
+            print("-"*70)
             print("승인 메시지 확인 구간 진입")
             if message == "y":
                 print("승인 메시지 확인")
@@ -70,16 +71,21 @@ class ChatConsumer(WebsocketConsumer):
                     },
                     config,
                 )
+        print("-"*70)
+        print("model output\n", output)
         response = output["messages"][-1].content
+        
         snapshot = orderbot_graph.get_state(config)
         # print("snapshot\n", snapshot)
 
         now = timezone.now()
         if snapshot.next:
+            print("-"*70)
             print("snapshot.next 존재")
             self.confirmation_message = True
             self.tool_call_id = output["messages"][-1].tool_calls[0]["id"]
             response = "작업을 승인하시려면 y를 입력하시고, 아니라면 변경 사유를 알려주세요!"
+            
             self.send(text_data=json.dumps(
             {"user": self.user.username,
              "message": response,

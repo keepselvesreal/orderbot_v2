@@ -1,4 +1,4 @@
-[
+product_list = [
     {
         "product_name": "떡케익5호",
         "quantity": 1,

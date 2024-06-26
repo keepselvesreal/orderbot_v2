@@ -7,6 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import AIMessage
 from django.db.models import QuerySet
 
+from .files.product_list import product_list
 from .langgraph_states import State
 from .langgraph_tools import (
     lookup_policy, fetch_product_list,
@@ -16,6 +17,7 @@ from .langgraph_tools import (
     CompleteOrEscalate, ToOrderAssistant, ToOrderInquiryAssistant, ToOrderUpdateAssistant
     )
 from products.models import Order
+
 
 
 model="gpt-3.5-turbo"
@@ -75,7 +77,7 @@ order_create_prompt = ChatPromptTemplate.from_messages(
             Current time: {time}.
             """,
         ),
-        MessagesPlaceholder(variable_name="messages"),
+        # MessagesPlaceholder(variable_name="messages"),
     ]
 ).partial(time=datetime.now())
 
@@ -111,13 +113,24 @@ present_product_list_runnable = present_product_list_prompt | llm
 use_create_tool_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", 
-        "너는 사용자 요청대로 새로운 주문을 하는 주문봇이야"
-        "사용자의 요청을 꼼꼼히 확인한 후에 도구를 사용해 주문해줘."
-        "Current user ID: {user_info}"        
+        """
+        너는 사용자 요청대로 새로운 주문을 하는 주문봇이야.
+        User ID와 사용자의 요청을 꼼꼼히 확인하여 도구 사용에 필요한 인자를 정확하게 추출해줘.
+        주문 상세내역을 작성 시 판매 상품 목록의 정보와 비교하여 반드시 정확한 정보를 기입해야 해. 
+
+        Current user ID: {user_info}
+        Product_list: {product_list}
+
+        Please provide the order details in the following format:
+              items (list[dict[str, str | int | float]]): A list of dictionaries representing the order details. Each dictionary has the following keys:
+              'product_name': The name of the product (str)
+              'quantity': The quantity of the product (int)
+              'price': The price of the product (float)
+        """
         ),
         MessagesPlaceholder(variable_name="messages"),
     ]
-)
+).partial(product_list=product_list)
 llm =  ChatOpenAI()
 create_tool = [create_order]
 use_create_tool_runnable = use_create_tool_prompt | llm.bind_tools(create_tool)
