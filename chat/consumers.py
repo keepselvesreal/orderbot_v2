@@ -38,6 +38,10 @@ class ChatConsumer(WebsocketConsumer):
         text_data_json = json.loads(text_data)
         message = text_data_json["message"]
         user_id = text_data_json["userId"]
+        # order_id = text_data_json.get("orderId")
+        # print("order_id: ", order_id)
+        # if order_id:
+        #     message = "요청한 작업을 수행할 주문 선택"
         self.confirm_message = text_data_json.get("confirmMessage")
         self.tool_call_id = text_data_json.get("toolCallId")
 
@@ -45,7 +49,6 @@ class ChatConsumer(WebsocketConsumer):
             output = orderbot_graph.invoke({"messages": ("user", message),
                                             "user_info": user_id}, 
                                             config, stream_mode="values")
-            # response = output["messages"][-1].content
         else:
             print("-"*70)
             print("승인 메시지 확인 구간 진입")
@@ -74,11 +77,12 @@ class ChatConsumer(WebsocketConsumer):
         print("-"*70)
         print("model output\n", output)
         response = output["messages"][-1].content
+        now = timezone.now()
+        # orders = output.get("orders")
         
         snapshot = orderbot_graph.get_state(config)
         # print("snapshot\n", snapshot)
 
-        now = timezone.now()
         if snapshot.next:
             print("-"*70)
             print("snapshot.next 존재")
@@ -96,10 +100,31 @@ class ChatConsumer(WebsocketConsumer):
              ensure_ascii=False
              ))
         else:
+            print("snapshot.next 존재 X")
             self.send(text_data=json.dumps(
-                {"user": self.user.username,
-                "message": response,
-                "datetime": now.isoformat(),
-                },
-                ensure_ascii=False
-                ))
+                    {"user": self.user.username,
+                    "message": response,
+                    "datetime": now.isoformat(),
+                    },
+                    ensure_ascii=False
+                    ))
+            # if orders:
+            #     print("orders 존재 시 처리 구간 진입")
+            #     print("orders\n", orders)
+            #     self.send(text_data=json.dumps(
+            #         {"user": self.user.username,
+            #         "message": response,
+            #         "datetime": now.isoformat(),
+            #         "recent_orders": orders, 
+            #         },
+            #     ensure_ascii=False
+            #     ))
+            # else:
+            #     self.send(text_data=json.dumps(
+            #         {"user": self.user.username,
+            #         "message": response,
+            #         "datetime": now.isoformat(),
+            #         },
+            #         ensure_ascii=False
+            #         ))
+            

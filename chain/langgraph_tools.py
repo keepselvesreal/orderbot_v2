@@ -23,10 +23,7 @@ def fetch_user_information(user_id):
     # user_id = configuration.get("user_id", None)
     # print("config\n", config)
    
-    temp_info = f"""
-    user_id: {user_id}
-    """
-    return temp_info
+    return user_id
 
 
 @tool
@@ -120,12 +117,50 @@ def create_order(user_id: int, items :list[dict[str, str | int | float]]):
         return order
 
 @tool
-def change_order():
+def change_order(order_id: int, items: list[dict[str, str | int | float]]):
     """
     Modifies an existing order.
     This function allows the user to change details of an existing
+
+    Args:
+        order_id (int)
+        items (list[dict[str, str | int | float]]): A list of dictionaries representing the order details. Each dictionary has the following keys:
+            - "product_name": The name of the product (str)
+            - "quantity": The quantity of the product (int)
+            - "price": The price of the product (float)
     """
-    return "주문 변경 완료"
+    print("="*70)
+    print("change_order 진입")
+    try:
+        # Transaction을 사용하여 원자성을 보장
+        with transaction.atomic():
+            # 주문을 가져옴
+            order = Order.objects.get(id=order_id)
+
+            # 기존 주문 항목 삭제
+            order.order_items.all().delete()
+
+            # 새로운 주문 항목 추가
+            for item_data in items:
+                product = Product.objects.get(product_name=item_data['product_name'])
+                order.order_items.create(  # OrderItem.objects.create 대신 사용
+                    product=product,
+                    quantity=item_data['quantity'],
+                    price=Decimal(item_data['price'])
+                )
+            
+            order.order_status = 'order_changed'
+            order.save()
+            
+            return {"message": "Order updated successfully"}
+    except ObjectDoesNotExist as e:
+        # 주문 또는 제품이 존재하지 않는 경우의 예외 처리
+        return {"message": str(e)}
+
+    except Exception as e:
+        # 일반적인 예외 처리
+        return {"message": str(e)}
+    
 
 @tool
 def cancel_order():

@@ -249,20 +249,23 @@ def display_user_order(state: State):
     response = ask_order_runnable.invoke({**state, "orders": recent_orders})
     response = response.content
 
-    return {"messages": response, "orders": response}
+    return {"messages": response, "orders": recent_orders}
 
 builder.add_node("display_user_order", display_user_order)
 builder.add_edge("display_user_order", END)
 
 
 def request_approval(state: State):
+    print("-"*77)
+    print("request_approval 진입")
+    print("state\n", state)
+
     orders = state["orders"]
-    product_list = fetch_product_list()
+    # product_list = fetch_product_list()
     messages = state["messages"]
     response = request_approval_runnable.invoke({"orders": orders, 
-                                                 "product_list": product_list,
                                                  "messages": messages})
-    return {"messages": response}
+    return {"messages": response, "request_approval_message": True}
 
 builder.add_node("request_approval", request_approval)
 builder.add_edge("request_approval", END)
@@ -328,5 +331,5 @@ builder.add_conditional_edges(
 memory = SqliteSaver.from_conn_string(":memory:")
 orderbot_graph = builder.compile(
     checkpointer=memory,
-    interrupt_before=[create_tool]
+    interrupt_before=["create_tool", "update_tools"]
 )

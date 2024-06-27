@@ -29,5 +29,5 @@ class State(TypedDict):
     order_id: int = None 
     orders: str = None
     product_presentation: bool = False
-    user_approval: bool = False
+    request_approval_message: bool = False
     task_completed: bool = False
