@@ -14,7 +14,9 @@ from .langgraph_tools import (
     fetch_recent_order, fetch_change_order, fetch_cancel_order, 
     create_order, change_order, cancel_order,
     # GPT는 아래 pydantic model을 user_request.py로 빼는 걸 추천
-    CompleteOrEscalate, ToOrderAssistant, ToOrderInquiryAssistant, ToOrderUpdateAssistant
+    CompleteOrEscalate, 
+    ToOrderAssistant, ToOrderChangeAssistant, ToOrderCancelAssistant,
+    ToOrderInquiryAssistant,
     )
 from products.models import Order
 
@@ -131,8 +133,8 @@ use_create_tool_prompt = ChatPromptTemplate.from_messages(
     ]
 ).partial(product_list=product_list)
 llm =  ChatOpenAI()
-create_tool = [create_order]
-use_create_tool_runnable = use_create_tool_prompt | llm.bind_tools(create_tool)
+order_create_tool = [create_order]
+use_create_tool_runnable = use_create_tool_prompt | llm.bind_tools(order_create_tool)
 
 
 # order inquiry assistant
@@ -160,7 +162,7 @@ order_inquiry_runnable = order_inquiry_prompt | llm.bind_tools(
 )
 order_inquiry_runnable
 
-order_update_prompt = ChatPromptTemplate.from_messages(
+order_change_prompt = ChatPromptTemplate.from_messages(
     [
         (
             "system",
@@ -168,11 +170,41 @@ order_update_prompt = ChatPromptTemplate.from_messages(
             너는 조건에 따라 정해진 응답을 생성해야 해.
             각 조건과 이 조건에서 생성해야 하는 응답은 아래와 같아.
             - order_id가 주어지지 않은 경우: "display_user_order"
-            - order_id가 주어지고 user_approval이 False인 경우: "request_approval"
-            - order_id가 주어지고 user_approval이 True인 경우: "use_update_tools"  
+            - order_id가 주어지고 request_order_change_message가 False인 경우: "request_order_change_message"
+            - order_id가 주어지고 request_order_change_message이 True인 경우: "request_approval"
+            - order_id가 주어지고 request_order_change_message이 True이며 request_approval_message가 True인 경우: "use_change_tool"
 
             응답 전에 각 조건에 대응되는 응답인지 확실하게 확인하고 응답해줘.
-            응답은 반드시 "display_user_order", "request_approval", "use_update_tools" 중 하나여야만 해.
+            응답은 반드시 "display_user_order", "request_order_change_message", "request_approval", "use_order_change_tool" 중 하나여야만 해.
+
+            Current user ID: {user_info}
+            Order ID: {order_id}.
+            Request Order Change Message: {request_order_change_message}
+            Request_Approval_Message: {request_approval_message}.
+            Current time: {time}.
+            """,
+        ),
+        MessagesPlaceholder(variable_name="messages"),
+    ]
+).partial(time=datetime.now())
+
+llm = ChatOpenAI()
+order_change_runnable = order_change_prompt | llm
+
+
+order_cancel_prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """
+            너는 조건에 따라 정해진 응답을 생성해야 해.
+            각 조건과 이 조건에서 생성해야 하는 응답은 아래와 같아.
+            - order_id가 주어지지 않은 경우: "display_user_order"
+            - order_id가 주어지고 Request_Approval_Message가 False인 경우: "request_approval"
+            - order_id가 주어지고 Request_Approval_Message이 True인 경우: "use_cancel_tool"  
+
+            응답 전에 각 조건에 대응되는 응답인지 확실하게 확인하고 응답해줘.
+            응답은 반드시 "display_user_order", "request_approval", "use_order_cancel_tools" 중 하나여야만 해.
 
 
             Current user ID: {user_info}
@@ -186,7 +218,7 @@ order_update_prompt = ChatPromptTemplate.from_messages(
 ).partial(time=datetime.now())
 
 llm = ChatOpenAI()
-order_update_runnable = order_update_prompt | llm
+order_cancel_runnable = order_cancel_prompt | llm
 
 
 ask_order_prompt = ChatPromptTemplate.from_messages(
@@ -197,9 +229,9 @@ ask_order_prompt = ChatPromptTemplate.from_messages(
          너의 응답은 아래 내용을 포함해야 해.
          - 사용자의 지난 주문 내역(주문 날짜, 주문 ID, 상품명, 수량, 가격을 모두 표시하기)
          - 사용자가 변경을 원하는 주문 내역을 선택해달라는 메시지
-         - 사용자가 변경하여 다시 주문하고 싶은 주문 내역을 말해달라는 메시지
          
-         사용자 지난 주문 내역: {orders}
+         사용자 지난 주문 내역
+         {orders}
          """
          ),
         MessagesPlaceholder(variable_name="messages"),
@@ -208,6 +240,28 @@ ask_order_prompt = ChatPromptTemplate.from_messages(
 )
 llm =  ChatOpenAI()
 ask_order_runnable = ask_order_prompt | llm 
+
+
+
+ask_order_change_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", 
+         """
+         너는 주문 변경을 요청한 사용자에게 새로운 주문 내역을 묻는 주문봇이야.
+         너의 응답은 아래 내용을 포함해야 해.
+         - 사용자가 변경을 요청한 주문 내역(주문 날짜, 주문 ID, 상품명, 수량, 가격을 모두 표시하기)
+         - 사용자가 다시 주문하고 싶은 주문 내역을 말해달라는 메시지
+         
+         변경을 요청한 주문 내역
+         {selected_order}
+         """
+         ),
+        MessagesPlaceholder(variable_name="messages"),
+    ]
+    
+)
+llm =  ChatOpenAI()
+ask_order_change_runnable = ask_order_change_prompt | llm 
 
 
 request_approval_prompt = ChatPromptTemplate.from_messages(
@@ -225,7 +279,7 @@ request_approval_prompt = ChatPromptTemplate.from_messages(
         주의! 사용자가 입력한 상품명, 가격 등이 아래 상품 목록의 정보와 다른 경우 처리 방법
         - 사용자가 입력한 내용을 상품 목록 가운데 사용자가 입력한 내용과 가장 유사한 상품으로 변경.
 
-        사용자 선택한 기존 주문 내역: {orders}
+        사용자 선택한 기존 주문 내역: {selected_order}
         판매 중인 상품 목록
         {product_list}
         """
@@ -238,19 +292,15 @@ llm =  ChatOpenAI()
 request_approval_runnable = request_approval_prompt | llm 
 
 
-use_update_tool_prompt = ChatPromptTemplate.from_messages(
+use_order_change_tool_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", 
          """
-         너는 주문 변경 또는 주문 취소를 처리하는 주문봇이야.
-         적절한 도구를 사용해 사용자의 요청을 처리해줘.
+         너는 주문 변경을 처리하는 주문봇이야.
+         도구를 사용해 사용자의 요청을 처리해줘.
          사용자의 요청을 꼼꼼히 확인해 도구 호출에 필요한 인자를 정확히 추출해줘.
-
-         주문 변경 요청 처리 방법:
-         - 사용자의 메시지에서 사용자가 변경하길 원하는 주문의 ID 파악.
-         - 사용자의 지난 주문 내역(orders)과 사용자가 변경하길 원하는 주문 ID로 사용자가 변경하려는 주문을 정확히 파악.
-         - 사용자의 메시지를 바탕으로 새로운 주문 상세내역을 작성할 때는 판매 상품 목록의 정보와 비교하여 반드시 정확한 정보를 기입. 
-         - Please provide the order details in the following format:
+         사용자의 메시지를 바탕으로 새로운 주문 상세내역을 작성할 때는 판매 상품 목록의 정보와 비교하여 반드시 정확한 정보를 기입. 
+         Please provide the order details in the following format:
             items (list[dict[str, str | int | float]]): A list of dictionaries representing the order details. Each dictionary has the following keys:
             'product_name': The name of the product (str)
             'quantity': The quantity of the product (int)
@@ -258,16 +308,35 @@ use_update_tool_prompt = ChatPromptTemplate.from_messages(
 
          Current user ID: {user_info}
          Product_list: {product_list}
-         
-         orders: {orders}
+         selected_order: {selected_order}
          """
         ),
         MessagesPlaceholder(variable_name="messages"),
     ]
 ).partial(product_list=product_list)
 llm =  ChatOpenAI()
-update_tools = [change_order, cancel_order]
-use_update_tool_runnable = use_update_tool_prompt | llm.bind_tools(update_tools)
+order_change_tool = [change_order]
+use_order_change_tool_runnable = use_order_change_tool_prompt | llm.bind_tools(order_change_tool)
+
+
+use_order_cancel_tool_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", 
+         """
+         너는 주문 취소를 처리하는 주문봇이야.
+         도구를 사용해 사용자의 요청을 처리해줘.
+         
+         Current user ID: {user_info}
+         Product_list: {product_list}
+         selected_order: {selected_order}
+         """
+        ),
+        MessagesPlaceholder(variable_name="messages"),
+    ]
+).partial(product_list=product_list)
+llm =  ChatOpenAI()
+order_cancel_tool = [cancel_order]
+use_order_cancel_tool_runnable = use_order_change_tool_prompt | llm.bind_tools(order_cancel_tool)
 
 
 primary_assistant_prompt = ChatPromptTemplate.from_messages(
@@ -296,7 +365,8 @@ primary_assistant_runnable = primary_assistant_prompt | llm.bind_tools(
     primary_assistant_tools
     + [
         ToOrderInquiryAssistant,
-        ToOrderUpdateAssistant,
         ToOrderAssistant,
+        ToOrderChangeAssistant,
+        ToOrderChangeAssistant,
         ]
     )

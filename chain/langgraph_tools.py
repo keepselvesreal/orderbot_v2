@@ -264,15 +264,22 @@ class ToOrderInquiryAssistant(BaseModel):
 
 
 # order_request.py로 옮길 것을 제안
-class ToOrderUpdateAssistant(BaseModel):
-    """Transfers work to a specialized assistant to handle order chnage or order cancel."""
-
-    user_id: int = Field(description="The unique identifier of the user")
-    request: str = Field(description="Any necessary follow-up questions the order update assistant should clarify before proceeding.")
-
-
 class ToOrderAssistant(BaseModel):
     """Transfers work to a specialized assistant to handle new order creation."""
 
     user_id: int = Field(description="The unique identifier of the user")
     request: str = Field(description="Any necessary follow-up questions the order assistant should clarify before proceeding.")
+
+
+class ToOrderChangeAssistant(BaseModel):
+    """Transfers work to a specialized assistant to handle order change."""
+
+    user_id: int = Field(description="The unique identifier of the user")
+    request: str = Field(description="Any necessary follow-up questions the order change assistant should clarify before proceeding.")
+
+
+class ToOrderCancelAssistant(BaseModel):
+    """Transfers work to a specialized assistant to handle order cancel."""
+
+    user_id: int = Field(description="The unique identifier of the user")
+    request: str = Field(description="Any necessary follow-up questions the order cancel assistant should clarify before proceeding.")

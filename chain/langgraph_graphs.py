@@ -11,14 +11,18 @@ from .langgraph_assistants import (
     order_create_runnable,
     present_product_list_runnable,
     use_create_tool_runnable,
-    create_tool,
+    order_create_tool,
     order_inquiry_runnable,
     inquiry_tools,
-    order_update_runnable,
+    order_change_runnable,
     ask_order_runnable,
+    ask_order_change_runnable,
     request_approval_runnable,
-    use_update_tool_runnable,
-    update_tools,
+    use_order_change_tool_runnable,
+    order_change_tool,
+    order_cancel_runnable,
+    use_order_cancel_tool_runnable,
+    order_cancel_tool,
     primary_assistant_runnable,
     primary_assistant_tools,
 )
@@ -28,8 +32,9 @@ from .langgraph_tools import (
     fetch_recent_order,
     CompleteOrEscalate,
     ToOrderAssistant, 
+    ToOrderChangeAssistant,
+    ToOrderCancelAssistant,
     ToOrderInquiryAssistant, 
-    ToOrderUpdateAssistant
 )
 
 from .langgraph_utilities import create_entry_node, create_tool_node_with_fallback
@@ -53,8 +58,9 @@ def route_to_workflow(
 ) -> Literal[
     "primary_assistant",
     "order_inquiry",
-    "order_update",
-    "order_create"
+    "order_create",
+    "order_change",
+    "order_cancel",
 ]:
     """If we are in a delegated state, route directly to the appropriate assistant."""
     print("-"*77)
@@ -155,13 +161,13 @@ def reset_state_without_messages(state: State):
 builder.add_node("reset_state_without_messages", reset_state_without_messages)
 
 
-builder.add_node("use_create_tool", Assistant(use_create_tool_runnable))
+builder.add_node("use_order_create_tool", Assistant(use_create_tool_runnable))
 builder.add_node(
-    "create_tool",
-    create_tool_node_with_fallback(create_tool)
+    "order_create_tool",
+    create_tool_node_with_fallback(order_create_tool)
     )
-builder.add_edge("use_create_tool", "create_tool")
-builder.add_edge("create_tool", "reset_state_without_messages")
+builder.add_edge("use_order_create_tool", "order_create_tool")
+builder.add_edge("order_create_tool", "reset_state_without_messages")
 
 
 #--------------------------------------------------------------------------------------------------------------------------------------
@@ -205,35 +211,38 @@ builder.add_conditional_edges("order_inquiry", route_order_inquiry)
 
 
 #--------------------------------------------------------------------------------------------------------------------------------------
-# order update sub-graph
+# order change sub-graph
 builder.add_node(
-    "enter_order_update",
-    create_entry_node("Order Update Assistant", "order_update"),
+    "enter_order_change",
+    create_entry_node("Order Change Assistant", "order_change"),
 )
-builder.add_node("order_update", Assistant(order_update_runnable))
-builder.add_edge("enter_order_update", "order_update")
+builder.add_node("order_change", Assistant(order_change_runnable))
+builder.add_edge("enter_order_change", "order_change")
 
 
-def update_order_route(state: State):
+def order_change_route(state: State):
     print("-"*77)
-    print("update_order_route 진입")
+    print("order_change_route 진입")
     print("state\n", state)
     
     response = state["messages"][-1].content
     if response == "display_user_order":
         return "display_user_order"
+    elif response == "request_order_change_message":
+        return "request_order_change_message"
     elif response == "request_approval":
         return "request_approval"
-    elif response == "use_update_tools":
-        return "use_update_tools"
+    elif response == "use_order_change_tool":
+        return "use_order_change_tool"
     
 builder.add_conditional_edges(
-    "order_update",
-    update_order_route,
+    "order_change",
+    order_change_route,
     {
         "display_user_order": "display_user_order",
+        "request_order_change_message": "request_order_change_message",
         "request_approval": "request_approval",
-        "use_update_tools": "use_update_tools",
+        "use_order_change_tool": "use_order_change_tool",
     },
 )
 
@@ -245,14 +254,31 @@ def display_user_order(state: State):
 
     user_id = state["user_info"]
     print("user_id\n", user_id)
+    messages = state["messages"]
     recent_orders = fetch_recent_order({"user_id": user_id})
-    response = ask_order_runnable.invoke({**state, "orders": recent_orders})
-    response = response.content
+    output = ask_order_runnable.invoke({"messages": messages, "orders": recent_orders})
+    response = output.content
 
-    return {"messages": response, "orders": recent_orders}
+    return {"messages": response}
 
 builder.add_node("display_user_order", display_user_order)
 builder.add_edge("display_user_order", END)
+
+
+def request_order_change_message(state: State):
+    print("-"*77)
+    print("request_order_change_message 진입")
+    print("state\n", state)
+
+    messages = state["messages"]
+    selected_order = state["selected_order"]
+    output = ask_order_change_runnable.invoke({"messages": messages, "selected_order": selected_order})
+    response = output.content
+
+    return {"messages": response, "request_order_change_message": True}
+
+builder.add_node("request_order_change_message", request_order_change_message)
+builder.add_edge("request_order_change_message", "request_approval")
 
 
 def request_approval(state: State):
@@ -260,25 +286,67 @@ def request_approval(state: State):
     print("request_approval 진입")
     print("state\n", state)
 
-    orders = state["orders"]
-    # product_list = fetch_product_list()
     messages = state["messages"]
-    response = request_approval_runnable.invoke({"orders": orders, 
-                                                 "messages": messages})
+    selected_order = state["selected_order"]
+    
+    response = request_approval_runnable.invoke({"messages": messages,
+                                                 "selected_order": selected_order, })
+    
     return {"messages": response, "request_approval_message": True}
 
 builder.add_node("request_approval", request_approval)
 builder.add_edge("request_approval", END)
 
-builder.add_node("use_update_tools", Assistant(use_update_tool_runnable))
+
+builder.add_node("use_order_change_tool", Assistant(use_order_change_tool_runnable))
 builder.add_node(
-    "update_tools",
-    create_tool_node_with_fallback(update_tools)
+    "order_change_tool",
+    create_tool_node_with_fallback(order_change_tool)
     )
-builder.add_edge("use_update_tools", "update_tools")
-builder.add_edge("update_tools", "reset_state_without_messages")
+builder.add_edge("use_order_change_tools", "order_change_tool")
+builder.add_edge("order_change_tool", "reset_state_without_messages")
 builder.add_edge("reset_state_without_messages", END)
 
+
+builder.add_node(
+    "enter_order_cancel",
+    create_entry_node("Order Cancel Assistant", "order_cancel"),
+)
+builder.add_node("order_cancel", Assistant(order_cancel_runnable))
+builder.add_edge("enter_order_cancel", "order_cancel")
+
+
+def order_cancel_route(state: State):
+    print("-"*77)
+    print("order_cancel_route 진입")
+    print("state\n", state)
+    
+    response = state["messages"][-1].content
+    if response == "display_user_order":
+        return "display_user_order"
+    elif response == "request_approval":
+        return "request_approval"
+    elif response == "use_order_cancel_tools":
+        return "use_order_cancel_tools"
+    
+builder.add_conditional_edges(
+    "order_cancel",
+    order_cancel_route,
+    {
+        "display_user_order": "display_user_order",
+        "request_approval": "request_approval",
+        "use_order_cancel_tool": "use_order_cancel_tool",
+    },
+)
+
+builder.add_node("use_order_cancel_tool", Assistant(use_order_cancel_tool_runnable))
+builder.add_node(
+    "order_cancel_tool",
+    create_tool_node_with_fallback(order_cancel_tool)
+    )
+builder.add_edge("use_order_cancel_tool", "order_cancel_tool")
+builder.add_edge("order_cancel_tool", "reset_state_without_messages")
+builder.add_edge("reset_state_without_messages", END)
 
 #'--------------------------------------------------------------------------------------------------------------------------------------
 # Primary assistant
@@ -293,8 +361,9 @@ def route_primary_assistant(
 ) -> Literal[
     "primary_assistant_tools",
     "enter_order_inquiry",
-    "enter_order_update",
-    "enter_order_create"
+    "enter_order_create",
+    "enter_order_change",
+    "enter_order_cancel",
     "__end__",
 ]:
     print("-"*77)
@@ -308,10 +377,12 @@ def route_primary_assistant(
     if tool_calls:
         if tool_calls[0]["name"] == ToOrderInquiryAssistant.__name__:
             return "enter_order_inquiry"
-        elif tool_calls[0]["name"] == ToOrderUpdateAssistant.__name__:
-            return "enter_order_update"
         elif tool_calls[0]["name"] == ToOrderAssistant.__name__:
             return "enter_order_create"
+        elif tool_calls[0]["name"] == ToOrderChangeAssistant.__name__:
+            return "enter_order_change"
+        elif tool_calls[0]["name"] == ToOrderCancelAssistant.__name__:
+            return "enter_order_cancel"
         return "primary_assistant_tools"
     raise ValueError("Invalid route")
 
@@ -320,8 +391,9 @@ builder.add_conditional_edges(
     route_primary_assistant,
     {
         "enter_order_inquiry": "enter_order_inquiry",
-        "enter_order_update": "enter_order_update",
         "enter_order_create": "enter_order_create",
+        "enter_order_change": "enter_order_change",
+        "enter_order_cancel": "enter_order_cancel",
         "primary_assistant_tools": "primary_assistant_tools",
         END: END, # 도구 바로 사용하는 enter_order_inquiry 때문에 내비둬야 하나?
     },
@@ -331,5 +403,5 @@ builder.add_conditional_edges(
 memory = SqliteSaver.from_conn_string(":memory:")
 orderbot_graph = builder.compile(
     checkpointer=memory,
-    interrupt_before=["create_tool", "update_tools"]
+    interrupt_before=["order_create_tool", "order_change_tool", "order_cancel_tool"]
 )
