@@ -59,10 +59,12 @@
         const data = JSON.parse(event.data);
         const chat = document.getElementById('chat')
 
+        if (data.message) {
+            appendMessage(data, chat);
+        }
+    
         if (data.recent_orders) {
             displayRecentOrders(data.recent_orders);
-        } else {
-            appendMessage(data, chat);
         }
 
         // confirm_message가 있는 경우 orderId 저장

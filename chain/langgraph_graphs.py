@@ -99,20 +99,32 @@ def pop_dialog_state(state: State) -> dict:
 builder.add_node("leave_skill", pop_dialog_state)
 builder.add_edge("leave_skill", "primary_assistant")
 
-
 #--------------------------------------------------------------------------------------------------------------------------------------
 # order create sub-graph
 builder.add_node(
     "enter_order_create",
     create_entry_node("Order Create Assistant", "order_create"),
 )
-builder.add_node("order_create", Assistant(order_create_runnable))
+# builder.add_node("order_create", Assistant(order_create_runnable))
+def order_create(state: State):
+    print("-"*77)
+    print("order_create 진입")
+    print("state\n", state)
+    from langchain_core.messages import AIMessage
+    
+    if not state["product_presentation"]:
+        return {"messages": AIMessage(content="present_product_list")}
+    elif state["product_presentation"] and state["request_approval_message"] is None:
+        return {"messages": AIMessage(content="request_approval")}
+    elif state["product_presentation"] and state["request_approval_message"]:
+        return {"messages": AIMessage(content="use_order_create_tool")}
+builder.add_node("order_create", order_create)
 builder.add_edge("enter_order_create", "order_create")
 
 
-def create_order_route(state: State):
+def order_create_route(state: State):
     print("-"*77)
-    print("create_order_route 진입")
+    print("order_create_route 진입")
     print("state\n", state)
     
     response = state["messages"][-1].content
@@ -121,16 +133,16 @@ def create_order_route(state: State):
         return "present_product_list"
     elif response == "request_approval":
         return "request_approval"
-    elif response == "use_create_tool":
-        return "use_create_tool"
+    elif response == "use_order_create_tool":
+        return "use_order_create_tool"
     
 builder.add_conditional_edges(
     "order_create",
-    create_order_route,
+    order_create_route,
     {
         "present_product_list": "present_product_list",
         "request_approval": "request_approval",
-        "use_create_tool": "use_create_tool",
+        "use_order_create_tool": "use_order_create_tool",
     },
 )
 
@@ -216,7 +228,22 @@ builder.add_node(
     "enter_order_change",
     create_entry_node("Order Change Assistant", "order_change"),
 )
-builder.add_node("order_change", Assistant(order_change_runnable))
+# builder.add_node("order_change", Assistant(order_change_runnable))
+def order_change(state: State):
+    print("-"*77)
+    print("order_change 진입")
+    print("state\n", state)
+    from langchain_core.messages import AIMessage
+    
+    if not state["order_id"]:
+        return {"messages": AIMessage(content="step1")}
+    elif state["order_id"] and state["request_order_change_message"] is None:
+        return {"messages": AIMessage(content="step2")}
+    elif state["order_id"] and state["request_order_change_message"] and state["request_approval_message"] is None:
+        return {"messages": AIMessage(content="step3")} 
+    elif state["order_id"] and state["request_order_change_message"] and state["request_approval_message"]:
+        return {"messages": AIMessage(content="step4")}
+builder.add_node("order_change", order_change)
 builder.add_edge("enter_order_change", "order_change")
 
 
@@ -226,13 +253,17 @@ def order_change_route(state: State):
     print("state\n", state)
     
     response = state["messages"][-1].content
-    if response == "display_user_order":
+    # if response == "display_user_order":
+    if response == "step1":
         return "display_user_order"
-    elif response == "request_order_change_message":
-        return "request_order_change_message"
-    elif response == "request_approval":
+    # elif response == "request_order_change":
+    elif response == "step2":
+        return "request_order_change"
+    # elif response == "request_approval":
+    elif response == "step3":
         return "request_approval"
-    elif response == "use_order_change_tool":
+    # elif response == "use_order_change_tool":
+    elif response == "step4":
         return "use_order_change_tool"
     
 builder.add_conditional_edges(
@@ -240,7 +271,7 @@ builder.add_conditional_edges(
     order_change_route,
     {
         "display_user_order": "display_user_order",
-        "request_order_change_message": "request_order_change_message",
+        "request_order_change": "request_order_change",
         "request_approval": "request_approval",
         "use_order_change_tool": "use_order_change_tool",
     },
@@ -258,14 +289,15 @@ def display_user_order(state: State):
     recent_orders = fetch_recent_order({"user_id": user_id})
     output = ask_order_runnable.invoke({"messages": messages, "orders": recent_orders})
     response = output.content
+    print("response\n", response)
 
-    return {"messages": response}
+    return {"messages": response, "orders": recent_orders}
 
 builder.add_node("display_user_order", display_user_order)
 builder.add_edge("display_user_order", END)
 
 
-def request_order_change_message(state: State):
+def request_order_change(state: State):
     print("-"*77)
     print("request_order_change_message 진입")
     print("state\n", state)
@@ -277,8 +309,8 @@ def request_order_change_message(state: State):
 
     return {"messages": response, "request_order_change_message": True}
 
-builder.add_node("request_order_change_message", request_order_change_message)
-builder.add_edge("request_order_change_message", "request_approval")
+builder.add_node("request_order_change", request_order_change)
+# builder.add_edge("request_order_change", "request_approval")
 
 
 def request_approval(state: State):
@@ -290,7 +322,7 @@ def request_approval(state: State):
     selected_order = state["selected_order"]
     
     response = request_approval_runnable.invoke({"messages": messages,
-                                                 "selected_order": selected_order, })
+                                                 "selected_order": selected_order})
     
     return {"messages": response, "request_approval_message": True}
 
@@ -303,7 +335,7 @@ builder.add_node(
     "order_change_tool",
     create_tool_node_with_fallback(order_change_tool)
     )
-builder.add_edge("use_order_change_tools", "order_change_tool")
+builder.add_edge("use_order_change_tool", "order_change_tool")
 builder.add_edge("order_change_tool", "reset_state_without_messages")
 builder.add_edge("reset_state_without_messages", END)
 
@@ -312,7 +344,20 @@ builder.add_node(
     "enter_order_cancel",
     create_entry_node("Order Cancel Assistant", "order_cancel"),
 )
-builder.add_node("order_cancel", Assistant(order_cancel_runnable))
+# builder.add_node("order_cancel", Assistant(order_cancel_runnable))
+def order_cancel(state: State):
+    print("-"*77)
+    print("order_cancel 진입")
+    print("state\n", state)
+    from langchain_core.messages import AIMessage
+    
+    if not state["order_id"]:
+        return {"messages": AIMessage(content="step1")}
+    elif state["order_id"] and state["request_approval_message"] is None:
+        return {"messages": AIMessage(content="step2")} 
+    elif state["order_id"] and state["request_approval_message"]:
+        return {"messages": AIMessage(content="step3")}
+builder.add_node("order_cancel", order_cancel)
 builder.add_edge("enter_order_cancel", "order_cancel")
 
 
@@ -322,12 +367,15 @@ def order_cancel_route(state: State):
     print("state\n", state)
     
     response = state["messages"][-1].content
-    if response == "display_user_order":
+    # if response == "display_user_order":
+    if response == "step1":
         return "display_user_order"
-    elif response == "request_approval":
+    # elif response == "request_approval":
+    elif response == "step2":
         return "request_approval"
-    elif response == "use_order_cancel_tools":
-        return "use_order_cancel_tools"
+    # elif response == "use_order_cancel_tool":
+    elif response == "step3":
+        return "use_order_cancel_tool"
     
 builder.add_conditional_edges(
     "order_cancel",

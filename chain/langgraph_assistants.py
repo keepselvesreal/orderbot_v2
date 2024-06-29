@@ -18,6 +18,7 @@ from .langgraph_tools import (
     ToOrderAssistant, ToOrderChangeAssistant, ToOrderCancelAssistant,
     ToOrderInquiryAssistant,
     )
+
 from products.models import Order
 
 
@@ -43,7 +44,7 @@ class Assistant:
                 and not result.content[0].get("text")
             ):
                 messages = state["messages"] + [("user", "Respond with a real output.")]
-                state = {**state, "messages": messages}
+                state = {"messages": messages}
             else:
                 break
 
@@ -55,7 +56,10 @@ class Assistant:
             result = [order.to_dict() for order in result]
             result = AIMessage(content=result)
         # print("assistant 출력\n", type(result))
-        return {"messages": result}
+        
+        add_state = {k: v for k, v in state.items() if k != "dialog_state"}
+        
+        return {**add_state, "messages": result}
 
 
 order_create_prompt = ChatPromptTemplate.from_messages(
@@ -63,14 +67,14 @@ order_create_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-            너는 조건에 따라 정해진 응답을 생성해야 해.
+            너는 아래 조건에 따라 정해진 응답을 생성해야 해.
             각 조건과 이 조건에서 생성해야 하는 응답은 아래와 같아.
-            - Product Presentation이 False인 경우: "present_product_list"
-            - Product Presentation이 True이고 request_approval이 False인 경우: "request_approval"
-            - Product Presentation이 request_approval이 True인 경우: "use_create_tool"  
+            - Product Presentation이 주어지지 않은 경우: present_product_list
+            - Product Presentation이 True이고 Request Approval Message가 주어지지 않은 경우: request_approval
+            - Product Presentation이 Request Approval Message가 True인 경우: use_order_create_tool
 
             응답 전에 각 조건에 대응되는 응답인지 확실하게 확인하고 응답해줘.
-            응답은 반드시 "present_product_list", "request_approval", "use_create_tool" 중 하나여야만 해.
+            응답은 반드시 present_product_list, request_approval, use_order_create_tool 중 하나여야만 해.
 
 
             Current user ID: {user_info}
@@ -92,13 +96,14 @@ present_product_list_prompt = ChatPromptTemplate.from_messages(
         ("system", 
         """
         너는 사용자에게 판매 중인 상품 정보를 보여주는 주문봇이야.
-        
-        만약 사용자가 구체적으로 언급한 상품 정보가 있다면 아래 내용을 반영해 응답 메시지를 작성해줘.
-        -사용자가 언급한 상품 정보가 판매 중인 상품 정보와 다르다면, 
-         가장 유사한 상품 정보를 찾아 사용자가 말하는 상품이 해당 상품이 맞는지 확인.
-        -판매 중인 상품을 보여주며, 추가로 주문하길 원하는 상품이 있는지 물어보며 구매 유도.
-        
-        만약 사용자가 구체적으로 언급한 상품 정보가 없다면, 판매 중인 상품을 알려주고 그 가운데 주문을 원하는 상품을 알려달라고 요청해.
+        아래 단계에 따라 한글로 답변을 생성해.
+        1. 판매 중인 상품 목록 제시하기.
+        2. 사용자가 구체적인 상품을 언급했는지, 언급하지 않았는지 파악하기.
+        3. 만약 사용자가 구체적인 상품을 언급했다면, 추가로 주문하길 원하는 상품이 있는지 물어보기.
+        4. 사용자가 언급한 상품이 판매 중인 상품 목록의 상품명과 다르다면, 
+           가장 유사한 상품 정보를 찾아 사용자가 말하는 상품이 해당 상품이 맞는지 확인하는 메시지 추가하기.
+        5. 만약 사용자가 구체적인 상품을 언급하지 않았다면, 판매 중인 상품을 알려주고 그 가운데 주문을 원하는 상품을 알려달라고 요청하기.
+        반드시 판매 중인 상품 목록은 제시되어야 해.     
 
         판매 중인 상품
         {product_list}
@@ -117,7 +122,8 @@ use_create_tool_prompt = ChatPromptTemplate.from_messages(
         ("system", 
         """
         너는 사용자 요청대로 새로운 주문을 하는 주문봇이야.
-        User ID와 사용자의 요청을 꼼꼼히 확인하여 도구 사용에 필요한 인자를 정확하게 추출해줘.
+        도구 사용에 필요한 User ID와 사용자의 주문 내역을를 정확하게 파악해야 해..
+        사용자의 주문 내역은 지금까지의 Messges에서 확인할 수 있어.
         주문 상세내역을 작성 시 판매 상품 목록의 정보와 비교하여 반드시 정확한 정보를 기입해야 해. 
         Please provide the order details in the following format:
               items (list[dict[str, str | int | float]]): A list of dictionaries representing the order details. Each dictionary has the following keys:
@@ -167,21 +173,22 @@ order_change_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-            너는 조건에 따라 정해진 응답을 생성해야 해.
-            각 조건과 이 조건에서 생성해야 하는 응답은 아래와 같아.
-            - order_id가 주어지지 않은 경우: "display_user_order"
-            - order_id가 주어지고 request_order_change_message가 False인 경우: "request_order_change_message"
-            - order_id가 주어지고 request_order_change_message이 True인 경우: "request_approval"
-            - order_id가 주어지고 request_order_change_message이 True이며 request_approval_message가 True인 경우: "use_change_tool"
+            너는 아래 조건에 따라 정해진 응답을 생성해야 해.
+            메시지 내용이 응답 생성에 영향을 미쳐서는 안돼. 조건에 따라서만 응답을 생성해야 해.
+            - order_id가 주어지지 않은 경우: step1
+            - order_id가 주어지고 request_order_change_message가 주어지지 않은 경우: step2
+            - order_id가 주어지고 request_order_change_message이 True인 경우: step3
+            - order_id가 주어지고 request_order_change_message이 True이며 request_approval_message가 True인 경우: step4
 
-            응답 전에 각 조건에 대응되는 응답인지 확실하게 확인하고 응답해줘.
-            응답은 반드시 "display_user_order", "request_order_change_message", "request_approval", "use_order_change_tool" 중 하나여야만 해.
+            응답 전에 조건을 충족하는 응답인지 확실히 확인해줘.
+            응답은 반드시 step1, step2, step3, step4 중 하나여야만 해. 
+            절대 다른 응답을 생성하면 안돼.
 
-            Current user ID: {user_info}
-            Order ID: {order_id}.
-            Request Order Change Message: {request_order_change_message}
-            Request_Approval_Message: {request_approval_message}.
-            Current time: {time}.
+            user_id: {user_info}
+            order_id: {order_id}.
+            request_order_change_message: {request_order_change_message}
+            request_approval_message: {request_approval_message}.
+            current time: {time}.
             """,
         ),
         MessagesPlaceholder(variable_name="messages"),
@@ -197,19 +204,19 @@ order_cancel_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-            너는 조건에 따라 정해진 응답을 생성해야 해.
-            각 조건과 이 조건에서 생성해야 하는 응답은 아래와 같아.
-            - order_id가 주어지지 않은 경우: "display_user_order"
-            - order_id가 주어지고 Request_Approval_Message가 False인 경우: "request_approval"
-            - order_id가 주어지고 Request_Approval_Message이 True인 경우: "use_cancel_tool"  
+            너는 아래 조건에 따라 정해진 응답을 생성해야 해.
+            - Order ID가 주어지지 않은 경우: step1
+            - Order ID가 주어지고 Request Approval Message가 주어지지 않은 경우: step2
+            - Order ID가 주어지고 Request Approval Message이 True인 경우: step3
 
             응답 전에 각 조건에 대응되는 응답인지 확실하게 확인하고 응답해줘.
-            응답은 반드시 "display_user_order", "request_approval", "use_order_cancel_tools" 중 하나여야만 해.
+            응답은 반드시 step1, step2, step3 중 하나여야만 해. 
+            절대 다른 응답을 생성하면 안돼.
 
 
             Current user ID: {user_info}
             Order ID: {order_id}.
-            Request_Approval_Message: {request_approval_message}.
+            Request Approval Message: {request_approval_message}.
             Current time: {time}.
             """,
         ),
@@ -236,7 +243,6 @@ ask_order_prompt = ChatPromptTemplate.from_messages(
          ),
         MessagesPlaceholder(variable_name="messages"),
     ]
-    
 )
 llm =  ChatOpenAI()
 ask_order_runnable = ask_order_prompt | llm 
@@ -247,10 +253,10 @@ ask_order_change_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", 
          """
-         너는 주문 변경을 요청한 사용자에게 새로운 주문 내역을 묻는 주문봇이야.
-         너의 응답은 아래 내용을 포함해야 해.
-         - 사용자가 변경을 요청한 주문 내역(주문 날짜, 주문 ID, 상품명, 수량, 가격을 모두 표시하기)
-         - 사용자가 다시 주문하고 싶은 주문 내역을 말해달라는 메시지
+         너는 사용자에게 주문을 어떻게 변경할지 묻는 주문봇이야.
+         아래 단계에 따라 답변을 생성해.
+         1. 사용자가 선택한 주문 내역을 파악해. 주문 내역에는 주문 날짜, 주문 ID, 상품명, 수량, 가격이 모두 포함되어야 해.
+         2. 주문을 어떻게 변경할지 알려달라는 메시지를 작성해. 이 메시지에는 위에서 파악한 주문 내역이 반드시 포함되어야 해.
          
          변경을 요청한 주문 내역
          {selected_order}
@@ -268,18 +274,19 @@ request_approval_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", 
         """
-        너는 사용자의 요청한 작업을 수행하기 전에 수행하라 작업 내용을 정리해서 알려주는 주문봇이야.
-        너의 응답은 아래 내용을 포함해야 해.
-        - 주문 변경인 경우에만 포함되어야 하는 내용: 사용자가 선택한 기존 주문 내역
-        - 반드시 포함되어야 하는 내용
-            - 사용자가 현재 요청한 작업
-            - 너가 정리한 내용이 맞는 사용자에게 확인을 요청하는 메시지. "제가 정리한 내용이 맞나요? :)"
-        주문 내역에는 상품명, 가격, 수량을 반드시 정확하게 표시해야 해.
+        너는 수행할 작업 내용을 확인하는 주문봇이야.
+        아래 단계에 따라 답변을 생성해.
+        아래 단계를 따르지 않은 답변은 절대로 생성해선 안돼.
+        너는 작업을 실제로 수행할 수는 없으니 사용자가 요청한 작업을 수행했다는 종류의 내용을 답변에 포함해서는 안돼.
+        1. 지금까지의 메시지를 꼼꼼히 살펴보고 사용자가 요청한 작업을 파악해.
+        2. 너가 파악한 사용자 요청이 맞는지 확인하는 메시지를 작성해. 정확한 상품명, 가격, 수량이 반드시 포함돼야 해.
+        3. 사용자가 요청한 작업이 주문 변경 또는 주문 취소인 경우 사용자가 선택한 주문 내역을 파악해.
+        4. 지금까지 수행한 위의 작업들을 바탕으로 최종 메시지를 작성해.
 
-        주의! 사용자가 입력한 상품명, 가격 등이 아래 상품 목록의 정보와 다른 경우 처리 방법
-        - 사용자가 입력한 내용을 상품 목록 가운데 사용자가 입력한 내용과 가장 유사한 상품으로 변경.
+        사용자의 입력이 상품 목록의 정보와 다른 경우, 상품 목록 가운데 사용자 입력과 가장 유사한 정보로 사용자 입력을 대체해.
 
-        사용자 선택한 기존 주문 내역: {selected_order}
+        사용자 선택한 주문 내역(주문 변경 또는 주문 취소인 경우에만 존재)
+        {selected_order}
         판매 중인 상품 목록
         {product_list}
         """
@@ -367,6 +374,6 @@ primary_assistant_runnable = primary_assistant_prompt | llm.bind_tools(
         ToOrderInquiryAssistant,
         ToOrderAssistant,
         ToOrderChangeAssistant,
-        ToOrderChangeAssistant,
+        ToOrderCancelAssistant,
         ]
     )

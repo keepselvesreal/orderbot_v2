@@ -44,16 +44,18 @@ class ChatConsumer(WebsocketConsumer):
         print("order_id: ", order_id)
         print("selected_order\n", selected_order)
         if order_id:
-            message = "요청한 작업을 수행할 주문 선택"
+            orderbot_graph.update_state(config, {"order_id": order_id})
+            message = "요청한 작업을 수행할 주문은 아래와 같아."
         self.confirm_message = text_data_json.get("confirmMessage")
         self.tool_call_id = text_data_json.get("toolCallId")
 
         if "confirmMessage" not in text_data_json:
             output = orderbot_graph.invoke({"messages": ("user", message),
                                             "user_info": user_id,
-                                            "order_id": order_id,
+                                            # "order_id": order_id,
                                             "selected_order": selected_order}, 
                                             config)
+            orders = output.get("orders")
         else:
             print("-"*70)
             print("승인 메시지 확인 구간 진입")
@@ -79,6 +81,7 @@ class ChatConsumer(WebsocketConsumer):
         print("-"*70)
         print("model output\n", output)
         response = output["messages"][-1].content
+        print("response\n", response)
         now = timezone.now()
         
         snapshot = orderbot_graph.get_state(config)
