@@ -7,10 +7,6 @@
         <div class="row">
             <div class="col-md-8-offset-md-2">
                 <div id="chat" class="border p-3 mb-3" style="height: 400px; overflow-y: auto;"></div>
-                <div id="recent-orders" class="mb-3" style="display: none;">
-                    <h3>최근 주문 내역</h3>
-                    <ul id="order-list" class="list-group"></ul>
-                </div>
                 <div id="chat-input" class="input-group mb-3 justify-content-center">
                     <input id="chat-message-input" type="text" class="formr-control" style="width: 80%;" placeholder="메시지를 입력하세요">
                     <button id="chat-message-submit" class="btn btn-primary">전송</button>
@@ -53,6 +49,7 @@
     let currentRequestType = null;
     let currentConfirmMessage = null;
     let currentToolCallId = null;
+    let orderSelected = false; // 주문이 선택되었는지 여부를 추적
     
     chatSocket.onmessage = function(event) {
         console.log("Message received:", event.data);  // 메시지 수신 로그
@@ -60,12 +57,11 @@
         const chat = document.getElementById('chat')
 
         if (data.message) {
+            console.log("appendMessage 실행")
             appendMessage(data, chat);
         }
     
-        if (data.recent_orders) {
-            displayRecentOrders(data.recent_orders);
-        }
+        
 
         // confirm_message가 있는 경우 orderId 저장
         if (data.confirm_message !== null) {
@@ -139,18 +135,24 @@
         const source = isLocal ? "me" : (data.user === requestUser ? "me" : "other");
         const name = isLocal ? requestUser : "주문봇";
     
-        chatElement.innerHTML += `<div class='message ${source}'>
-            <strong>${name}</strong>
-            <span class='date'>${datetime}</span><br>
-            <span class='message-content'>${data.message}</span></div>`;
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', source);
+        messageDiv.innerHTML = `<strong>${name}</strong><span class='date'>${datetime}</span><br><span class='message-content'>${data.message}</span>`;
+
+        chatElement.appendChild(messageDiv);
+
+        if (data.recent_orders) {
+            displayRecentOrders(data.recent_orders, chatElement);
+        }
+
         chatElement.scrollTop = chatElement.scrollHeight;
     }
 
-    function displayRecentOrders(orders) {
-        const recentOrdersDiv = document.getElementById('recent-orders');
-        const orderList = document.getElementById('order-list');
+    // chatElement를 파라미터로 받아 recent_orders를 chat에 추가
+    function displayRecentOrders(orders, chatElement) {
+        const orderList = document.createElement('ul'); // 주문 내역을 위한 새로운 ul 엘리먼트 생성
+        orderList.classList.add('list-group');
 
-        orderList.innerHTML = ''; // 기존 주문 내역 초기화
         orders.forEach(order => {
             const listItem = document.createElement('li');
             listItem.classList.add('order-item'); // CSS 클래스 추가
@@ -161,24 +163,40 @@
             orderDetails += `</ul>`;
             listItem.innerHTML = orderDetails;
             listItem.addEventListener('click', () => {
-                document.querySelectorAll('.order-item').forEach(item => item.classList.remove('selected'));
-                listItem.classList.add('selected');
+                if (!orderSelected) { // 주문이 선택되지 않은 경우에만 선택 가능
+                    document.querySelectorAll('.order-item').forEach(item => item.classList.remove('selected'));
+                    listItem.classList.add('selected');
+                    orderSelected = true; // 주문이 선택됨을 표시
 
-                // 주문 변경/취소 요청을 서버로 전송
-                currentOrderId = order.id; 
-                currentOrderDetails = orderDetails; 
-                chatSocket.send(JSON.stringify({
-                    orderDetails: orderDetails,
-                    message: null,
-                    userId: userId,
-                    datetime: new Date().toISOString(),
-                    orderId: order.id
-                }));
+                    // 주문 변경/취소 요청을 서버로 전송
+                    currentOrderId = order.id; 
+                    currentOrderDetails = orderDetails; 
+                    chatSocket.send(JSON.stringify({
+                        orderDetails: orderDetails,
+                        message: null,
+                        userId: userId,
+                        datetime: new Date().toISOString(),
+                        orderId: order.id
+                    }));
+
+                    // 최근 주문 내역을 chat에 표시
+                    chatElement.innerHTML += `<div class='message other'>
+                        <strong>선택한 주문</strong><br>
+                        <span class='message-content'>${orderDetails}</span></div>`;
+                    chatElement.scrollTop = chatElement.scrollHeight;
+                }
             });
             orderList.appendChild(listItem);
         });
 
-        recentOrdersDiv.style.display = 'block';
+        // 주문 내역 리스트를 chatElement에 추가
+        const orderMessageDiv = document.createElement('div');
+        orderMessageDiv.classList.add('message', 'other');
+        orderMessageDiv.innerHTML = `<strong>주문 내역</strong><br><span class='message-content'></span>`;
+        orderMessageDiv.querySelector('.message-content').appendChild(orderList);
+
+        chatElement.appendChild(orderMessageDiv);
+        chatElement.scrollTop = chatElement.scrollHeight;
     }
 
     input.focus();

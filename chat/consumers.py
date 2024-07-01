@@ -117,7 +117,7 @@ class ChatConsumer(WebsocketConsumer):
                 print("orders\n", orders)
                 self.send(text_data=json.dumps(
                     {"user": self.user.username,
-                    "message": response,
+                    "message": "지난 주문 내역은 아래와 같습니다.",
                     "datetime": now.isoformat(),
                     "recent_orders": orders, 
                     },
