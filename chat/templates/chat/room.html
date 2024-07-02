@@ -64,8 +64,9 @@
         
 
         // confirm_message가 있는 경우 orderId 저장
-        if (data.confirm_message !== null) {
-            console.log("confirm_message 존재!", data.confirm_message)
+        if (typeof data.confirm_message !== 'undefined' && data.confirm_message !== null) {
+            <!-- console.log("confirm_message 존재!", data.confirm_message) -->
+            console.log("confirm_message 존재!", data)
             currentOrderId = data.order_id;
             currentRequestType = data.request_type;
             currentConfirmMessage = data.confirm_message;

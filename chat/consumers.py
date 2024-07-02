@@ -44,9 +44,11 @@ class ChatConsumer(WebsocketConsumer):
         print("order_id: ", order_id)
         print("selected_order\n", selected_order)
         if order_id:
-            orderbot_graph.update_state(config, {"order_id": order_id})
+            orderbot_graph.update_state(config, {"order_id": order_id,
+                                                 "orders": None})
             message = "요청한 작업을 수행할 주문은 아래와 같아."
         self.confirm_message = text_data_json.get("confirmMessage")
+        print("self.confirm_message: ", self.confirm_message)
         self.tool_call_id = text_data_json.get("toolCallId")
 
         if "confirmMessage" not in text_data_json:
@@ -115,9 +117,11 @@ class ChatConsumer(WebsocketConsumer):
             if orders:
                 print("orders 존재 시 처리 구간 진입")
                 print("orders\n", orders)
+                if order_id is None:
+                    response = "지난 주문 내역은 아래와 같습니다."
                 self.send(text_data=json.dumps(
                     {"user": self.user.username,
-                    "message": "지난 주문 내역은 아래와 같습니다.",
+                    "message": response,
                     "datetime": now.isoformat(),
                     "recent_orders": orders, 
                     },
