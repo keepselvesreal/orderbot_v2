@@ -1,15 +1,65 @@
 {% extends "base.html" %}
 
-{% block title %}주문 with AI{% endblock %}
+{% block title %}주문은? AI !{% endblock %}
 
 {% block content %}
     <div class="container">
         <div class="row">
-            <div class="col-md-8-offset-md-2">
-                <div id="chat" class="border p-3 mb-3" style="height: 400px; overflow-y: auto;"></div>
+            <div class="col-md-8">
+                <div id="chat" class="border p-3 mb-3" style="height: 500px; overflow-y: auto;"></div>
                 <div id="chat-input" class="input-group mb-3 justify-content-center">
-                    <input id="chat-message-input" type="text" class="formr-control" style="width: 80%;" placeholder="메시지를 입력하세요">
+                    <input id="chat-message-input" type="text" class="form-control" style="width: 80%;" placeholder="메시지를 입력하세요">
                     <button id="chat-message-submit" class="btn btn-primary">전송</button>
+                </div>
+            </div>
+            <div class="col-md-4 d-flex flex-column align-items-center mt-md-5">
+                <div class="card" style="width: 100%; max-width: 300px;">
+                    <div class="card-body">
+                      <h5 class="card-title text-center">직접 처리!</h5>
+                      <p class="card-text text-center">아래 버튼을 이용하세요</p>
+                    </div>
+                </div>
+                <div class="card my-2" style="width: 100%; max-width: 300px;">
+                    <div class="card-header">
+                        <button id="order-btn" class="btn btn-primary w-100">주문</button>
+                    </div>
+                    <div id="order-sub-buttons" class="card-body d-none">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-secondary" type="button">메뉴 보기</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card my-2" style="width: 100%; max-width: 300px;">
+                    <div class="card-header">
+                        <button id="order-query-btn" class="btn btn-primary w-100">주문 조회</button>
+                    </div>
+                    <div id="order-query-sub-buttons" class="card-body d-none">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-secondary order-btn" data-order-type="all" type="button">전체 주문</button>
+                            <button class="btn btn-secondary order-btn" data-order-type="change" type="button">변경 주문</button>
+                            <button class="btn btn-secondary order-btn" data-order-type="cancel" type="button">취소 주문</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card my-2" style="width: 100%; max-width: 300px;">
+                    <div class="card-header">
+                        <button id="change-order-btn" class="btn btn-primary w-100">주문 변경</button>
+                    </div>
+                    <div id="change-order-sub-buttons" class="card-body d-none">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-secondary" type="button">변경할 주문 선택하기</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card my-2" style="width: 100%; max-width: 300px;">
+                    <div class="card-header">
+                        <button id="cancel-order-btn" class="btn btn-primary w-100">주문 취소</button>
+                    </div>
+                    <div id="cancel-order-sub-buttons" class="card-body d-none">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-secondary" type="button">취소할 주문 선택하기</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -18,8 +68,6 @@
 
 {% block include_css %}
     {% load static %}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+Knujsl7/5hb7ie1TO5y6mAbviu1RI5B+YkLDz/5qFaRi7j" crossorigin="anonymous">
     <style>
         .message-content {
             white-space: pre-wrap;
@@ -30,7 +78,6 @@
 {% block include_js %}
     {{ user_id|json_script:"user-id" }}
     {{ request.user.username|json_script:"request-user" }}
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/js/bootstrap.bundle.min.js" integrity="sha384-ka5u10Iv4Db7j6QCdXxAwEQQtRF4ETtZkMF5X0LMU18zV2ZIB0Czbg1oTr5uB8sS" crossorigin="anonymous"></script>
 {% endblock %}
 
 {% block domready %}
@@ -185,6 +232,11 @@
                         <strong>선택한 주문</strong><br>
                         <span class='message-content'>${orderDetails}</span></div>`;
                     chatElement.scrollTop = chatElement.scrollHeight;
+
+                    // 데이터 전송 후 사용자가 선택한 주문 ID와 주문 초기화
+                    currentOrderId = null;
+                    orderSelected = false; 
+                    console.log("주문 선택 초기화:", currentOrderId);
                 }
             });
             orderList.appendChild(listItem);
@@ -201,5 +253,21 @@
     }
 
     input.focus();
+
+    // Function to toggle sub-buttons visibility
+    function toggleSubButtons(buttonId, subButtonsId) {
+        const button = document.getElementById(buttonId);
+        const subButtons = document.getElementById(subButtonsId);
+        
+        button.addEventListener("click", function() {
+            subButtons.classList.toggle("d-none");
+        });
+    }
+
+    // Toggle sub-buttons for each main button
+    toggleSubButtons("order-btn", "order-sub-buttons");
+    toggleSubButtons("order-query-btn", "order-query-sub-buttons");
+    toggleSubButtons("change-order-btn", "change-order-sub-buttons");
+    toggleSubButtons("cancel-order-btn", "cancel-order-sub-buttons");
 
 {% endblock %}

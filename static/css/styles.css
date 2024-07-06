@@ -25,3 +25,7 @@
 .message-content {
     white-space: pre-wrap;
 }
+
+.mt-md-5 {
+    margin-top: 25vh; /* 25% of viewport height */
+}

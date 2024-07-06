@@ -45,6 +45,7 @@ class ChatConsumer(WebsocketConsumer):
         print("selected_order\n", selected_order)
         if order_id:
             orderbot_graph.update_state(config, {"order_id": order_id,
+                                                 "selected_order": selected_order,
                                                  "orders": None})
             message = "요청한 작업을 수행할 주문은 아래와 같아."
         self.confirm_message = text_data_json.get("confirmMessage")
@@ -53,9 +54,9 @@ class ChatConsumer(WebsocketConsumer):
 
         if "confirmMessage" not in text_data_json:
             output = orderbot_graph.invoke({"messages": ("user", message),
-                                            "user_info": user_id,
+                                            "user_info": user_id},
                                             # "order_id": order_id,
-                                            "selected_order": selected_order}, 
+                                            # "selected_order": selected_order}, 
                                             config)
             orders = output.get("orders")
         else:
@@ -92,6 +93,7 @@ class ChatConsumer(WebsocketConsumer):
         if snapshot.next:
             print("-"*70)
             print("snapshot.next 존재")
+            print("output['messages'][-1]\n",  output["messages"][-1])
             self.confirmation_message = True
             self.tool_call_id = output["messages"][-1].tool_calls[0]["id"]
             response = "작업을 승인하시려면 y를 입력하시고, 거부하신다면 변경 사유를 알려주세요!"
