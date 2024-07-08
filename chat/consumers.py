@@ -65,13 +65,24 @@ class ChatConsumer(WebsocketConsumer):
         elif message == "get_order_by_status":
             self.get_order_by_status(order_status, start_date, end_date)
             return 
-        elif message == "order_product":
+        elif message == "create_order":
             self.create_order(user_id, ordered_products)
             return
-        elif message == "order_to_cancel":
-            self.get_cancelable_orders(start_date, end_date)
+        elif message == "order_to_change":
+            order_change_type = "order_changed"
+            self.get_changeable_orders(order_change_type, start_date, end_date)
+            return 
+        elif message == "order_changed":
+            self.send_product_list(order_id)
             return
-        elif message == "cancel_order":
+        elif message == "change_order":
+            self.change_order(order_id, ordered_products)
+            return 
+        elif message == "order_to_cancel":
+            order_change_type = "order_canceled"
+            self.get_changeable_orders(order_change_type, start_date, end_date)
+            return
+        elif message == "order_canceled":
             self.cancel_order(order_id)
             return 
 
@@ -172,13 +183,18 @@ class ChatConsumer(WebsocketConsumer):
                     ensure_ascii=False
                     ))
                 
-    def send_product_list(self):
+    def send_product_list(self, order_id=None):
         products = fetch_product_list()
+        if order_id:
+            message = "주문을 어떻게 변경하실 건가요?\n아래 메뉴 목록에서 새로 주문해주세요."
+        else:
+            message = "다음은 메뉴 목록입니다."
         self.send(text_data=json.dumps({
             "user": self.user.username,
-            "message": "다음은 메뉴 목록입니다.",
+            "message": message,
             "datetime": timezone.now().isoformat(),
-            "products": json.loads(products)
+            "products": json.loads(products),
+            "order_id": order_id
         }))
 
     def parse_date(self, date_str):
@@ -246,12 +262,17 @@ class ChatConsumer(WebsocketConsumer):
             "fetched_orders": orders_data
         }))
 
-    def get_cancelable_orders(self, start_date=None, end_date=None):
+    def get_changeable_orders(self, order_change_type, start_date=None, end_date=None):
         print("-"*70)
-        print("get_cancelable_orders 진입")
+        print("get_changeable_orders 진입")
         print("startdate / enddate: ", f"{start_date} / {end_date}")
+
+        if order_change_type == "order_changed":
+            message = "주문 변경이 가능한 주문 목록입니다."
+        else:
+            message = "주문 취소가 가능한 주문 목록입니다."
         
-        orders = Order.objects.exclude(order_status='order_canceled')
+        orders = Order.objects.exclude(order_status="order_canceled")
         
         if start_date and end_date:
             orders = orders.filter(created_at__date__range=[start_date, end_date])
@@ -264,8 +285,9 @@ class ChatConsumer(WebsocketConsumer):
         
         self.send(text_data=json.dumps({
             "user": self.user.username,
-            "message": "주문 취소가 가능한 주문 목록입니다.",
-            "cancelable_orders": orders_data
+            "message": message,
+            "changeable_orders": orders_data,
+            "order_change_type": order_change_type
         }))
 
     def create_order(self, user_id, ordered_products):
@@ -304,6 +326,64 @@ class ChatConsumer(WebsocketConsumer):
             self.send(text_data=json.dumps({
                 'message': 'error',
                 'error': 'User not found'
+            }))
+        
+        except Exception as e:
+            self.send(text_data=json.dumps({
+                'message': 'error',
+                'error': str(e)
+            }))
+
+    def change_order(self, order_id, ordered_products):
+        try:
+            print("-" * 70)
+            print("change_order 진입")
+            print("ordered_products\n", ordered_products)
+            
+            with transaction.atomic():
+                # 주문 ID로 기존 주문을 가져옴
+                try:
+                    order = Order.objects.get(id=order_id)
+                except ObjectDoesNotExist:
+                    self.send(text_data=json.dumps({
+                        'message': 'error',
+                        'error': f'Order not found: {order_id}'
+                    }))
+                    return
+
+                # 주문 상태를 변경
+                order.order_status = 'order_changed'
+                order.save()
+                
+                # 기존 주문 항목을 모두 삭제
+                order.order_items.all().delete()
+                
+                total_price = Decimal('0.00')
+                for ordered_product in ordered_products:
+                    try:
+                        product = Product.objects.get(product_name=ordered_product["productName"])
+                    except ObjectDoesNotExist:
+                        self.send(text_data=json.dumps({
+                            'message': 'error',
+                            'error': f'Product not found: {ordered_product["productName"]}'
+                        }))
+                        return
+
+                    # 새로운 주문 항목 생성
+                    order.order_items.create(product=product, quantity=ordered_product["quantity"], price=Decimal(ordered_product["productPrice"]))
+                    total_price += Decimal(ordered_product["productPrice"]) * Decimal(ordered_product["quantity"])
+
+                # 응답 보내기 (선택 사항)
+                self.send(text_data=json.dumps({
+                    'message': 'order_changed_confirmed',
+                    'order_id': order.id,
+                    'total_price': str(total_price)
+                }))
+        
+        except ObjectDoesNotExist:
+            self.send(text_data=json.dumps({
+                'message': 'error',
+                'error': 'Order not found'
             }))
         
         except Exception as e:

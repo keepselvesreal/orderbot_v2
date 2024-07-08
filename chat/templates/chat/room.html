@@ -53,6 +53,13 @@
                     </div>
                     <div id="change-order-sub-buttons" class="card-body d-none">
                         <div class="d-grid gap-2">
+                            <div class="d-grid gap-2">
+                                <p class="text-center"><기본 설정><br>1달 이내의 주문만 표시</p>
+                                <div class="input-group mb-3">
+                                    <input type="text" id="change-start-date" class="form-control" placeholder="MM-DD" onfocus="(this.type='date')">
+                                    <span class="input-group-text">~</span>
+                                    <input type="text" id="change-end-date" class="form-control" placeholder="MM-DD" onfocus="(this.type='date')">
+                                </div>
                             <button class="btn btn-secondary" type="button">변경할 주문 선택하기</button>
                         </div>
                     </div>
@@ -119,15 +126,22 @@
         }
         if (data.products) {
             console.log("data.products: ", data.products)
-            displayProductList(data.products, chat);
+            if (data.order_id) {
+                orderId = data.order_id
+            }
+            else {
+                orderId = null
+            }
+            displayProductList(data.products, chat, orderId);
         }
         if (data.fetched_orders) {
             console.log("data.fetched_orders: ", data.fetched_orders)
             displayFetchedOrders(data.fetched_orders, chat);
         }
-        if (data.cancelable_orders) {
-            console.log("data.cancelable_orders: ", data.cancelable_orders);
-            displayFetchedOrders(data.cancelable_orders, chat, ordersToCancel=true);
+        if (data.changeable_orders) {
+            console.log("data.changeable_orders: ", data.changeable_orders);
+            const orderChangeType = data.order_change_type
+            displayFetchedOrders(data.changeable_orders, chat, orderChangeType);
         }
     
         
@@ -301,19 +315,20 @@
             datetime: new Date().toISOString()
         }));
     }
+
     // Add event listener to the "메뉴 보기" button
     const menuButton = document.querySelector('.btn-secondary');
     if (menuButton) {
         menuButton.addEventListener('click', showProductList);
     }
 
-    // Store selected products in an object
-    const selectedProducts = {};
+    // 선택한 상품들을 각 containerId에 대해 독립적으로 관리하기 위한 객체
+    const selectedProductsMap = {};
 
-    function displayProductList(products, chatElement) {
+    function displayProductList(products, chatElement, orderId = null) {
         const productList = document.createElement('ul');
         productList.classList.add('list-group');
-    
+
         // 새로운 selected-products-container 생성
         const newSelectedProductsContainer = document.createElement('div');
         const uniqueContainerId = `selected-products-container-${Date.now()}`; // 고유한 ID 생성
@@ -324,7 +339,10 @@
             <h5>총 주문 금액: <span id="total-order-amount-${uniqueContainerId}">0</span>원</h5>
             <button id="confirm-order-btn-${uniqueContainerId}" class="btn btn-success">주문</button>
         `;
-    
+
+        // 선택한 상품 목록을 저장할 객체 초기화
+        selectedProductsMap[uniqueContainerId] = {};
+
         products.forEach((product, index) => {
             const productId = index;
             const listItem = document.createElement('li');
@@ -337,28 +355,27 @@
                 </div>`;
             productList.appendChild(listItem);
         });
-    
+
         const productMessageDiv = document.createElement('div');
         productMessageDiv.classList.add('message', 'other');
         productMessageDiv.innerHTML = `<strong>메뉴 목록</strong><br>`;
         productMessageDiv.appendChild(productList);
-    
+
         chatElement.appendChild(productMessageDiv);
         chatElement.appendChild(newSelectedProductsContainer); // 새로운 selected-products-container 추가
         chatElement.scrollTop = chatElement.scrollHeight;
-    
+
         // 이벤트 리스너 추가
         document.querySelectorAll('.select-button').forEach(button => {
             button.addEventListener('click', (event) => {
                 handleSelectButtonClick(event, uniqueContainerId); // 고유한 ID 전달
             });
         });
-    
+
         document.getElementById(`confirm-order-btn-${uniqueContainerId}`).addEventListener('click', () => {
-            handleConfirmOrderButtonClick(uniqueContainerId); // 고유한 ID 전달
+            handleConfirmOrderButtonClick(uniqueContainerId, orderId); // 고유한 ID 전달
         });
     }
-    
 
     function handleSelectButtonClick(event, containerId) {
         const button = event.target;
@@ -369,36 +386,35 @@
         const quantity = parseInt(quantityInput.value);
         const totalAmountElement = document.getElementById(`total-order-amount-${containerId}`);
         let totalOrderAmount = parseInt(totalAmountElement.textContent);
-    
+
         const selectedProductsList = document.querySelector(`#selected-products-list-${containerId}`); // 고유한 ID 사용
-    
+
         // Toggle selection state
         const isSelected = button.classList.contains('btn-success');
-    
+
         if (isSelected) {
             // Unselect product
             button.classList.remove('btn-success');
             button.classList.add('btn-primary');
             button.textContent = '선택';
-    
 
-    
             // Remove from selected products display
             const selectedProductItem = document.querySelector(`.selected-product[data-product-id="${productId}"]`);
             if (selectedProductItem) {
-                totalOrderAmount -= selectedProducts[productId].productPrice * selectedProducts[productId].quantity;
+                totalOrderAmount -= selectedProductsMap[containerId][productId].productPrice * selectedProductsMap[containerId][productId].quantity;
                 selectedProductItem.remove();
+                delete selectedProductsMap[containerId][productId]; // 선택 해제된 상품 삭제
             }
         } else {
             // Select product
             button.classList.remove('btn-primary');
             button.classList.add('btn-success');
             button.textContent = '선택됨';
-    
+
             // Add to selected products
-            selectedProducts[productId] = { productName, productPrice, quantity };
+            selectedProductsMap[containerId][productId] = { productName, productPrice, quantity };
             totalOrderAmount += productPrice * quantity;
-    
+
             // Add to selected products display
             const selectedItem = document.createElement('li');
             selectedItem.classList.add('selected-product', 'list-group-item');
@@ -406,53 +422,54 @@
             selectedItem.innerHTML = `${productName} - ${productPrice}원 x ${quantity} = ${productPrice * quantity}원`;
             selectedProductsList.appendChild(selectedItem);
         }
-    
+
         // Update total order amount
         totalAmountElement.textContent = totalOrderAmount;
     }
-    
 
-    function handleConfirmOrderButtonClick(containerId) {
-        const selectedProductsList = document.getElementById(`selected-products-list-${containerId}`); // 고유한 ID 사용
+    function handleConfirmOrderButtonClick(containerId, orderId) {
+        const selectedProductsList = document.getElementById(`selected-products-list-${containerId}`);
         const selectedItems = selectedProductsList.querySelectorAll('.selected-product');
-    
+
         // 주문 상품 목록을 하나의 배열로 저장
         const orderedProducts = [];
-    
-        selectedItems.forEach(item => {
-            const productId = item.getAttribute('data-product-id');
-            const productName = selectedProducts[productId].productName;
-            const productPrice = selectedProducts[productId].productPrice;
-            const quantity = selectedProducts[productId].quantity;
-    
-            // 추가 유효성 검사
-            if (productId && productName && quantity && !isNaN(quantity) && quantity > 0) {
-                orderedProducts.push({
-                    productName: productName,
-                    productPrice: productPrice,
-                    quantity: quantity
-                });
-            }
-        });
-    
+
+        for (let productId in selectedProductsMap[containerId]) {
+            const product = selectedProductsMap[containerId][productId];
+            orderedProducts.push({
+                productName: product.productName,
+                productPrice: product.productPrice,
+                quantity: product.quantity
+            });
+        }
+
         if (orderedProducts.length > 0) {
-            const message = "order_product";
+            let message;
             const data = {
-                message: message,
                 userId: userId,
                 orderedProducts: orderedProducts,
                 datetime: new Date().toISOString()
             };
-    
+
+            if (orderId) {
+                message = "change_order";
+                data.orderId = orderId; // order_id를 데이터에 추가
+            } else {
+                message = "create_order";
+            }
+
+            data.message = message;
+
             chatSocket.send(JSON.stringify(data));
-    
+
             const confirmOrderButton = document.getElementById(`confirm-order-btn-${containerId}`);
             confirmOrderButton.textContent = '주문 완료';
             confirmOrderButton.classList.remove('btn-success');
             confirmOrderButton.classList.add('btn-secondary');
             confirmOrderButton.disabled = true;
         }
-    }    
+    }
+
 
 
     // 날짜 형식 변경 및 기본값 설정
@@ -512,7 +529,7 @@
     });
 
 
-    function displayFetchedOrders(orders, chatElement, ordersToCancel = false) {
+    function displayFetchedOrders(orders, chatElement, orderChangeType) {
         const ordersList = document.createElement('ul');
         ordersList.classList.add('list-group');
     
@@ -548,22 +565,28 @@
             `;
     
             // 취소 가능한 주문일 경우에만 주문 취소 버튼 추가
-            if (ordersToCancel) {
-                const cancelOrderButton = document.createElement('button');
-                cancelOrderButton.classList.add('btn', 'btn-danger', 'mt-2');
-                cancelOrderButton.textContent = '주문 취소';
-                cancelOrderButton.addEventListener('click', function() {
-                    // 취소할 주문 처리 로직을 추가
-                    console.log(`주문 취소 버튼 클릭 - 주문 ID: ${order.id}`);
+            if (orderChangeType) {
+                const changeOrderButton = document.createElement('button');
+                changeOrderButton.classList.add('btn', 'btn-danger', 'mt-2');
+                if (orderChangeType=="order_changed") {
+                    changeOrderButton.textContent = '주문 변경';
+                }
+                else {
+                    changeOrderButton.textContent = '주문 취소';
+                }
+                
+                changeOrderButton.addEventListener('click', function() {
+                    // 처리 로직을 추가
+                    console.log(`취소 또는 변경할 주문 버튼 클릭 - 주문 ID: ${order.id}`);
                     const message = {
-                        message: 'cancel_order',
+                        message: orderChangeType,
                         userId: userId,
                         orderId: order.id
                     };
                 
                     chatSocket.send(JSON.stringify(message));
                 });
-                orderItem.appendChild(cancelOrderButton);
+                orderItem.appendChild(changeOrderButton);
             }
     
             ordersList.appendChild(orderItem);
@@ -609,6 +632,47 @@
     
         chatSocket.send(JSON.stringify(message));
     });
+
+    function handleOrderChange(orderChangeType) {
+        // Define the elements based on orderChangeType
+        const startDateElement = document.getElementById(`${orderChangeType}-start-date`);
+        const endDateElement = document.getElementById(`${orderChangeType}-end-date`);
+        const buttonElement = document.querySelector(`#${orderChangeType}-order-sub-buttons .btn-secondary`);
+    
+        buttonElement.addEventListener('click', function() {
+            let startDate = startDateElement.value;
+            let endDate = endDateElement.value;
+    
+            // If start-date and end-date is empty, default to 1 month ago till today
+            if (!startDate && !endDate) {
+                const today = new Date();
+                const oneMonthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+    
+                // Format one month ago date
+                const formattedOneMonthAgo = `${oneMonthAgo.getFullYear()}-${('0' + (oneMonthAgo.getMonth() + 1)).slice(-2)}-${('0' + oneMonthAgo.getDate()).slice(-2)}`;
+    
+                // Format today's date
+                const formattedToday = `${today.getFullYear()}-${('0' + (today.getMonth() + 1)).slice(-2)}-${('0' + today.getDate()).slice(-2)}`;
+    
+                startDate = formattedOneMonthAgo;
+                endDate = formattedToday;
+            }
+    
+            // 서버로 전송할 메시지 작성
+            console.log("startDate, endDate", startDate, endDate)
+            const message = {
+                message: orderChangeType === 'change' ? 'order_to_change' : 'order_to_cancel',
+                userId: userId,  // 실제 유저 아이디를 여기에 넣어야 함
+                startDate: startDate,
+                endDate: endDate,
+            };
+    
+            chatSocket.send(JSON.stringify(message));
+        });
+    }
+    
+    handleOrderChange('change');
+    handleOrderChange('cancel');
  
 
 {% endblock %}
