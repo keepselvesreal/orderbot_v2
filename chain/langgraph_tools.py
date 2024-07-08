@@ -55,8 +55,6 @@ def fetch_product_list():
     """
 
     product_list = """
-    product_list
-
     [
         {
             "product_name": "떡케익5호",

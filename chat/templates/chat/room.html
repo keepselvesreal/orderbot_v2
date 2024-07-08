@@ -35,9 +35,15 @@
                     </div>
                     <div id="order-query-sub-buttons" class="card-body d-none">
                         <div class="d-grid gap-2">
+                            <p class="text-center"><기본 설정><br>1달 이내의 주문만 표시</p>
+                            <div class="input-group mb-3">
+                                <input type="text" id="start-date" class="form-control" placeholder="MM-DD" onfocus="(this.type='date')">
+                                <span class="input-group-text">~</span>
+                                <input type="text" id="end-date" class="form-control" placeholder="MM-DD" onfocus="(this.type='date')">
+                            </div>
                             <button class="btn btn-secondary order-btn" data-order-type="all" type="button">전체 주문</button>
-                            <button class="btn btn-secondary order-btn" data-order-type="change" type="button">변경 주문</button>
-                            <button class="btn btn-secondary order-btn" data-order-type="cancel" type="button">취소 주문</button>
+                            <button class="btn btn-secondary order-btn" data-order-type="order_changed" type="button">변경한 주문</button>
+                            <button class="btn btn-secondary order-btn" data-order-type="order_canceled" type="button">취소한 주문</button>
                         </div>
                     </div>
                 </div>
@@ -57,23 +63,23 @@
                     </div>
                     <div id="cancel-order-sub-buttons" class="card-body d-none">
                         <div class="d-grid gap-2">
-                            <button class="btn btn-secondary" type="button">취소할 주문 선택하기</button>
+                            <p class="text-center"><기본 설정><br>1달 이내의 주문만 표시</p>
+                            <div class="input-group mb-3">
+                                <input type="text" id="cancel-start-date" class="form-control" placeholder="MM-DD" onfocus="(this.type='date')">
+                                <span class="input-group-text">~</span>
+                                <input type="text" id="cancel-end-date" class="form-control" placeholder="MM-DD" onfocus="(this.type='date')">
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-secondary" type="button">취소할 주문 선택하기</button>
+                            </div>
                         </div>
-                    </div>
+                    </div>    
                 </div>
             </div>
         </div>
     </div>
 {% endblock %}
 
-{% block include_css %}
-    {% load static %}
-    <style>
-        .message-content {
-            white-space: pre-wrap;
-        }
-    </style>
-{% endblock %}
 
 {% block include_js %}
     {{ user_id|json_script:"user-id" }}
@@ -101,11 +107,27 @@
     chatSocket.onmessage = function(event) {
         console.log("Message received:", event.data);  // 메시지 수신 로그
         const data = JSON.parse(event.data);
+        // TODO: 현재 시간을 기준으로 datetime 필드 채우도록 이후 수정하기
+        if (!data.datetime) {
+            data.datetime = new Date().toISOString();
+        }
         const chat = document.getElementById('chat')
 
         if (data.message) {
             console.log("appendMessage 실행")
             appendMessage(data, chat);
+        }
+        if (data.products) {
+            console.log("data.products: ", data.products)
+            displayProductList(data.products, chat);
+        }
+        if (data.fetched_orders) {
+            console.log("data.fetched_orders: ", data.fetched_orders)
+            displayFetchedOrders(data.fetched_orders, chat);
+        }
+        if (data.cancelable_orders) {
+            console.log("data.cancelable_orders: ", data.cancelable_orders);
+            displayFetchedOrders(data.cancelable_orders, chat, ordersToCancel=true);
         }
     
         
@@ -269,5 +291,324 @@
     toggleSubButtons("order-query-btn", "order-query-sub-buttons");
     toggleSubButtons("change-order-btn", "change-order-sub-buttons");
     toggleSubButtons("cancel-order-btn", "cancel-order-sub-buttons");
+
+    // Function to handle the "메뉴 보기" button click
+    function showProductList() {
+        const message = "show_products";
+        chatSocket.send(JSON.stringify({
+            message: message,
+            userId: userId,
+            datetime: new Date().toISOString()
+        }));
+    }
+    // Add event listener to the "메뉴 보기" button
+    const menuButton = document.querySelector('.btn-secondary');
+    if (menuButton) {
+        menuButton.addEventListener('click', showProductList);
+    }
+
+    // Store selected products in an object
+    const selectedProducts = {};
+
+    function displayProductList(products, chatElement) {
+        const productList = document.createElement('ul');
+        productList.classList.add('list-group');
+    
+        // 새로운 selected-products-container 생성
+        const newSelectedProductsContainer = document.createElement('div');
+        const uniqueContainerId = `selected-products-container-${Date.now()}`; // 고유한 ID 생성
+        newSelectedProductsContainer.id = uniqueContainerId;
+        newSelectedProductsContainer.innerHTML = `
+            <h5>선택된 상품</h5>
+            <ul id="selected-products-list-${uniqueContainerId}" class="list-group"></ul> <!-- 고유한 selected-products-list ID 생성 -->
+            <h5>총 주문 금액: <span id="total-order-amount-${uniqueContainerId}">0</span>원</h5>
+            <button id="confirm-order-btn-${uniqueContainerId}" class="btn btn-success">주문</button>
+        `;
+    
+        products.forEach((product, index) => {
+            const productId = index;
+            const listItem = document.createElement('li');
+            listItem.classList.add('list-group-item');
+            listItem.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <span><strong>${product.product_name}</strong> - ${product.price}원</span>
+                    <input type="number" class="form-control product-quantity" style="width: 70px;" min="1" value="1" data-product-id="${productId}">
+                    <button class="btn btn-primary btn-sm select-button" data-product-id="${productId}" data-product-name="${product.product_name}" data-product-price="${product.price}">선택</button>
+                </div>`;
+            productList.appendChild(listItem);
+        });
+    
+        const productMessageDiv = document.createElement('div');
+        productMessageDiv.classList.add('message', 'other');
+        productMessageDiv.innerHTML = `<strong>메뉴 목록</strong><br>`;
+        productMessageDiv.appendChild(productList);
+    
+        chatElement.appendChild(productMessageDiv);
+        chatElement.appendChild(newSelectedProductsContainer); // 새로운 selected-products-container 추가
+        chatElement.scrollTop = chatElement.scrollHeight;
+    
+        // 이벤트 리스너 추가
+        document.querySelectorAll('.select-button').forEach(button => {
+            button.addEventListener('click', (event) => {
+                handleSelectButtonClick(event, uniqueContainerId); // 고유한 ID 전달
+            });
+        });
+    
+        document.getElementById(`confirm-order-btn-${uniqueContainerId}`).addEventListener('click', () => {
+            handleConfirmOrderButtonClick(uniqueContainerId); // 고유한 ID 전달
+        });
+    }
+    
+
+    function handleSelectButtonClick(event, containerId) {
+        const button = event.target;
+        const productId = button.getAttribute('data-product-id');
+        const productName = button.getAttribute('data-product-name');
+        const productPrice = parseInt(button.getAttribute('data-product-price'));
+        const quantityInput = document.querySelector(`.product-quantity[data-product-id="${productId}"]`);
+        const quantity = parseInt(quantityInput.value);
+        const totalAmountElement = document.getElementById(`total-order-amount-${containerId}`);
+        let totalOrderAmount = parseInt(totalAmountElement.textContent);
+    
+        const selectedProductsList = document.querySelector(`#selected-products-list-${containerId}`); // 고유한 ID 사용
+    
+        // Toggle selection state
+        const isSelected = button.classList.contains('btn-success');
+    
+        if (isSelected) {
+            // Unselect product
+            button.classList.remove('btn-success');
+            button.classList.add('btn-primary');
+            button.textContent = '선택';
+    
+
+    
+            // Remove from selected products display
+            const selectedProductItem = document.querySelector(`.selected-product[data-product-id="${productId}"]`);
+            if (selectedProductItem) {
+                totalOrderAmount -= selectedProducts[productId].productPrice * selectedProducts[productId].quantity;
+                selectedProductItem.remove();
+            }
+        } else {
+            // Select product
+            button.classList.remove('btn-primary');
+            button.classList.add('btn-success');
+            button.textContent = '선택됨';
+    
+            // Add to selected products
+            selectedProducts[productId] = { productName, productPrice, quantity };
+            totalOrderAmount += productPrice * quantity;
+    
+            // Add to selected products display
+            const selectedItem = document.createElement('li');
+            selectedItem.classList.add('selected-product', 'list-group-item');
+            selectedItem.setAttribute('data-product-id', productId);
+            selectedItem.innerHTML = `${productName} - ${productPrice}원 x ${quantity} = ${productPrice * quantity}원`;
+            selectedProductsList.appendChild(selectedItem);
+        }
+    
+        // Update total order amount
+        totalAmountElement.textContent = totalOrderAmount;
+    }
+    
+
+    function handleConfirmOrderButtonClick(containerId) {
+        const selectedProductsList = document.getElementById(`selected-products-list-${containerId}`); // 고유한 ID 사용
+        const selectedItems = selectedProductsList.querySelectorAll('.selected-product');
+    
+        // 주문 상품 목록을 하나의 배열로 저장
+        const orderedProducts = [];
+    
+        selectedItems.forEach(item => {
+            const productId = item.getAttribute('data-product-id');
+            const productName = selectedProducts[productId].productName;
+            const productPrice = selectedProducts[productId].productPrice;
+            const quantity = selectedProducts[productId].quantity;
+    
+            // 추가 유효성 검사
+            if (productId && productName && quantity && !isNaN(quantity) && quantity > 0) {
+                orderedProducts.push({
+                    productName: productName,
+                    productPrice: productPrice,
+                    quantity: quantity
+                });
+            }
+        });
+    
+        if (orderedProducts.length > 0) {
+            const message = "order_product";
+            const data = {
+                message: message,
+                userId: userId,
+                orderedProducts: orderedProducts,
+                datetime: new Date().toISOString()
+            };
+    
+            chatSocket.send(JSON.stringify(data));
+    
+            const confirmOrderButton = document.getElementById(`confirm-order-btn-${containerId}`);
+            confirmOrderButton.textContent = '주문 완료';
+            confirmOrderButton.classList.remove('btn-success');
+            confirmOrderButton.classList.add('btn-secondary');
+            confirmOrderButton.disabled = true;
+        }
+    }    
+
+
+    // 날짜 형식 변경 및 기본값 설정
+    document.getElementById('start-date').addEventListener('input', function() {
+        this.type = 'text';
+        if (this.value) {
+            const date = new Date(this.value);
+            this.value = `${date.getMonth() + 1}-${date.getDate()}`;
+        }
+    });
+
+    document.getElementById('end-date').addEventListener('input', function() {
+        this.type = 'text';
+        if (this.value) {
+            const date = new Date(this.value);
+            this.value = `${date.getMonth() + 1}-${date.getDate()}`;
+        }
+    });
+
+
+    // Event listener for order type buttons (전체 주문, 변경한 주문, 취소한 주문)
+    document.querySelectorAll('.btn-secondary[data-order-type]').forEach(button => {
+        button.addEventListener('click', function() {
+            const orderType = this.getAttribute('data-order-type');
+            let startDate = document.getElementById('start-date').value;
+            let endDate = document.getElementById('end-date').value;
+
+            // If start-date or end-date is empty, default to 1 month ago till today
+            if (!startDate && !endDate) {
+                const today = new Date();
+                const oneMonthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+                startDate = `${oneMonthAgo.getMonth() + 1}-${oneMonthAgo.getDate()}`;
+                endDate = `${today.getMonth() + 1}-${today.getDate()}`;
+            }
+    
+            // 서버로 전송할 메시지 작성
+            let message;
+            if (orderType === 'all') {
+                message = {
+                    message: 'get_all_orders',
+                    userId: userId,  // 실제 유저 아이디를 여기에 넣어야 함
+                    startDate: startDate,
+                    endDate: endDate
+                };
+            } else {
+                message = {
+                    message: 'get_order_by_status',
+                    userId: userId,  // 실제 유저 아이디를 여기에 넣어야 함
+                    orderStatus: orderType,  // 예: 'pending', 'completed' 등
+                    startDate: startDate,
+                    endDate: endDate
+                };
+            }
+    
+            chatSocket.send(JSON.stringify(message));
+        });
+    });
+
+
+    function displayFetchedOrders(orders, chatElement, ordersToCancel = false) {
+        const ordersList = document.createElement('ul');
+        ordersList.classList.add('list-group');
+    
+        orders.forEach((order, index) => {
+            const orderItem = document.createElement('li');
+            orderItem.classList.add('list-group-item');
+    
+            // 주문 상태에 따라 다른 표시 방식을 적용할 수 있음
+            let statusText = order.order_status;
+            if (statusText === 'order_canceled') {
+                statusText = '주문 취소됨';
+            } else if (statusText === 'payment_completed') {
+                statusText = '결제 완료';
+            } else if (statusText === '주문 변경') {
+                statusText = '주문 변경';
+            } else if (statusText === 'order') {
+                statusText = '주문 완료';
+            }
+    
+            // 주문 목록 표시
+            orderItem.innerHTML = `
+                <strong>주문 ${index + 1}</strong><br>
+                주문 번호: ${order.id}<br>
+                주문 상태: ${statusText}<br>
+                생성일시: ${new Date(order.created_at).toLocaleString('ko-KR')}<br>
+                최근 업데이트: ${new Date(order.updated_at).toLocaleString('ko-KR')}<br>
+                <strong>주문 상품 목록:</strong><br>
+                <ul>
+                    ${order.items.map((item, idx) => `
+                        <li>상품 이름: ${item.product_name}, 수량: ${item.quantity}, 가격: ${item.price}원</li>
+                    `).join('')}
+                </ul>
+            `;
+    
+            // 취소 가능한 주문일 경우에만 주문 취소 버튼 추가
+            if (ordersToCancel) {
+                const cancelOrderButton = document.createElement('button');
+                cancelOrderButton.classList.add('btn', 'btn-danger', 'mt-2');
+                cancelOrderButton.textContent = '주문 취소';
+                cancelOrderButton.addEventListener('click', function() {
+                    // 취소할 주문 처리 로직을 추가
+                    console.log(`주문 취소 버튼 클릭 - 주문 ID: ${order.id}`);
+                    const message = {
+                        message: 'cancel_order',
+                        userId: userId,
+                        orderId: order.id
+                    };
+                
+                    chatSocket.send(JSON.stringify(message));
+                });
+                orderItem.appendChild(cancelOrderButton);
+            }
+    
+            ordersList.appendChild(orderItem);
+        });
+    
+        const orderMessageDiv = document.createElement('div');
+        orderMessageDiv.classList.add('message', 'other');
+        orderMessageDiv.innerHTML = `<strong>주문 목록</strong><br>`;
+        orderMessageDiv.appendChild(ordersList);
+    
+        chatElement.appendChild(orderMessageDiv);
+        chatElement.scrollTop = chatElement.scrollHeight;
+    }
+    
+
+    document.querySelector('#cancel-order-sub-buttons .btn-secondary').addEventListener('click', function() {
+        let startDate = document.getElementById('cancel-start-date').value;
+        let endDate = document.getElementById('cancel-end-date').value;
+    
+        // If start-date and end-date is empty, default to 1 month ago till today
+        if (!startDate && !endDate) {
+            const today = new Date();
+            const oneMonthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+    
+            // Format one month ago date
+            const formattedOneMonthAgo = `${oneMonthAgo.getFullYear()}-${('0' + (oneMonthAgo.getMonth() + 1)).slice(-2)}-${('0' + oneMonthAgo.getDate()).slice(-2)}`;
+            
+            // Format today's date
+            const formattedToday = `${today.getFullYear()}-${('0' + (today.getMonth() + 1)).slice(-2)}-${('0' + today.getDate()).slice(-2)}`;
+            
+            startDate = formattedOneMonthAgo;
+            endDate = formattedToday;
+        }
+    
+        // 서버로 전송할 메시지 작성
+        console.log("startDate, endDate", startDate, endDate)
+        const message = {
+            message: 'order_to_cancel',
+            userId: userId,  // 실제 유저 아이디를 여기에 넣어야 함
+            startDate: startDate,
+            endDate: endDate,
+        };
+    
+        chatSocket.send(JSON.stringify(message));
+    });
+ 
 
 {% endblock %}
