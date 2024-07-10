@@ -93,6 +93,7 @@
     {{ request.user.username|json_script:"request-user" }}
 {% endblock %}
 
+
 {% block domready %}
     const userId = JSON.parse(
         document.getElementById("user-id").textContent
@@ -104,6 +105,7 @@
         document.getElementById("request-user").textContent
     );
 
+
     let currentOrderId = null; 
     let currentOrderDetails = null;
     let currentRequestType = null;
@@ -111,6 +113,7 @@
     let currentToolCallId = null;
     let orderSelected = false; // 주문이 선택되었는지 여부를 추적
     
+
     chatSocket.onmessage = function(event) {
         console.log("Message received:", event.data);  // 메시지 수신 로그
         const data = JSON.parse(event.data);
@@ -143,8 +146,6 @@
             const orderChangeType = data.order_change_type
             displayFetchedOrders(data.changeable_orders, chat, orderChangeType);
         }
-    
-        
 
         // confirm_message가 있는 경우 orderId 저장
         if (typeof data.confirm_message !== 'undefined' && data.confirm_message !== null) {
@@ -157,13 +158,22 @@
         }
     };
 
+
     chatSocket.onclose = function(event) {
         console.error('Chat socket closed unexpectedly');
     };
 
-    const input = document.getElementById("chat-message-input");
-    const submitButton = document.getElementById("chat-message-submit");
 
+    const input = document.getElementById("chat-message-input");
+    input.focus();
+    input.addEventListener("keypress", function(event) {
+        if (event.key == "Enter") {
+            event.preventDefault();
+            submitButton.click();
+        }
+    });
+    
+    const submitButton = document.getElementById("chat-message-submit");
     submitButton.addEventListener("click", function(event) {
         const message = input.value;
         if (message) {
@@ -206,12 +216,6 @@
         }
     });
 
-    input.addEventListener("keypress", function(event) {
-        if (event.key == "Enter") {
-            event.preventDefault();
-            submitButton.click();
-        }
-    });
 
     function appendMessage(data, chatElement, isLocal = false) {
         const dateOptions = {hour: "numeric", minute: "numeric", hour12: true};
@@ -232,11 +236,14 @@
         chatElement.scrollTop = chatElement.scrollHeight;
     }
 
+
     // chatElement를 파라미터로 받아 recent_orders를 chat에 추가
     function displayRecentOrders(orders, chatElement) {
         const orderList = document.createElement('ul'); // 주문 내역을 위한 새로운 ul 엘리먼트 생성
         orderList.classList.add('list-group');
-
+    
+        let selectedOrder = null; // 선택된 주문을 추적하기 위한 변수
+    
         orders.forEach(order => {
             const listItem = document.createElement('li');
             listItem.classList.add('order-item'); // CSS 클래스 추가
@@ -246,15 +253,22 @@
             });
             orderDetails += `</ul>`;
             listItem.innerHTML = orderDetails;
+    
             listItem.addEventListener('click', () => {
                 if (!orderSelected) { // 주문이 선택되지 않은 경우에만 선택 가능
-                    document.querySelectorAll('.order-item').forEach(item => item.classList.remove('selected'));
+                    if (selectedOrder) {
+                        // 이전에 선택된 주문 아이템의 selected 클래스를 제거
+                        selectedOrder.classList.remove('selected');
+                    }
+    
+                    // 현재 선택된 주문 아이템에 selected 클래스 추가
                     listItem.classList.add('selected');
+                    selectedOrder = listItem; // 현재 선택된 주문 아이템을 업데이트
                     orderSelected = true; // 주문이 선택됨을 표시
-
+    
                     // 주문 변경/취소 요청을 서버로 전송
-                    currentOrderId = order.id; 
-                    currentOrderDetails = orderDetails; 
+                    currentOrderId = order.id;
+                    currentOrderDetails = orderDetails;
                     chatSocket.send(JSON.stringify({
                         orderDetails: orderDetails,
                         message: null,
@@ -262,33 +276,33 @@
                         datetime: new Date().toISOString(),
                         orderId: order.id
                     }));
-
+    
                     // 최근 주문 내역을 chat에 표시
                     chatElement.innerHTML += `<div class='message other'>
                         <strong>선택한 주문</strong><br>
                         <span class='message-content'>${orderDetails}</span></div>`;
                     chatElement.scrollTop = chatElement.scrollHeight;
-
+    
                     // 데이터 전송 후 사용자가 선택한 주문 ID와 주문 초기화
                     currentOrderId = null;
-                    orderSelected = false; 
+                    orderSelected = false;
                     console.log("주문 선택 초기화:", currentOrderId);
                 }
             });
+    
             orderList.appendChild(listItem);
         });
-
+    
         // 주문 내역 리스트를 chatElement에 추가
         const orderMessageDiv = document.createElement('div');
         orderMessageDiv.classList.add('message', 'other');
         orderMessageDiv.innerHTML = `<strong>주문 내역</strong><br><span class='message-content'></span>`;
         orderMessageDiv.querySelector('.message-content').appendChild(orderList);
-
+    
         chatElement.appendChild(orderMessageDiv);
         chatElement.scrollTop = chatElement.scrollHeight;
     }
-
-    input.focus();
+    
 
     // Function to toggle sub-buttons visibility
     function toggleSubButtons(buttonId, subButtonsId) {
@@ -306,6 +320,7 @@
     toggleSubButtons("change-order-btn", "change-order-sub-buttons");
     toggleSubButtons("cancel-order-btn", "cancel-order-sub-buttons");
 
+
     // Function to handle the "메뉴 보기" button click
     function showProductList() {
         const message = "show_products";
@@ -316,11 +331,13 @@
         }));
     }
 
+
     // Add event listener to the "메뉴 보기" button
     const menuButton = document.querySelector('.btn-secondary');
     if (menuButton) {
         menuButton.addEventListener('click', showProductList);
     }
+
 
     // 선택한 상품들을 각 containerId에 대해 독립적으로 관리하기 위한 객체
     const selectedProductsMap = {};
@@ -605,8 +622,6 @@
         chatElement.appendChild(orderMessageDiv);
         chatElement.scrollTop = chatElement.scrollHeight;
     }
-    
-
     
 
     function handleOrderChange(orderChangeType) {
