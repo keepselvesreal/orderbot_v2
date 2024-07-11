@@ -337,3 +337,10 @@ class TodDsplayUserOrder(BaseModel):
     """Transfers work to a specialized assistant to display user's orders."""
 
     request: str = Field(description="Any necessary follow-up messages display_user_order node should clarify before proceeding.")
+
+
+class TodRequestApproval(BaseModel):
+    """Transfers work to a specialized assistant to request user's approval"""
+    selected_order : str = Field(description="고객이 선택한 기존 주문 내역")
+    customer_request: str = Field(description="고객의 요청 사항")
+    message_to_be_approved: str = Field(description="고객에게 내용 확인을 요청하는 메시지. 고객이 선택한 기존 주문 내역과 고객의 요청 사항을 모두 포함.")

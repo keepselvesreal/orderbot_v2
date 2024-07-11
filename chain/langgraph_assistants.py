@@ -195,7 +195,7 @@ order_inquiry_runnable
 #     ]
 # ).partial(time=datetime.now())
 
-from chain.langgraph_tools import TodDsplayUserOrder, ask_how_to_change, request_approval, change_order
+from chain.langgraph_tools import TodDsplayUserOrder, TodRequestApproval, ask_how_to_change, request_approval, change_order
 order_change_prompt = ChatPromptTemplate.from_messages(
     [
         (
@@ -205,10 +205,11 @@ order_change_prompt = ChatPromptTemplate.from_messages(
             적절한 도구를 사용해 고객의 요청을 처리해.
             고객이 응답이 필요할 때는 도구를 사용하지 말고 고객에게 응답을 부탁해.
 
-            고객에게 변경할 기존 주문 내역을 제시하지 않았다면 get_recent_order를 사용해.
+            고객에게 변경할 기존 주문 내역을 제시하지 않았다면 fetch_recent_order를 사용해.
             고객이 변경할 주문을 선택한 다음에는 ask_how_to_change를 사용해.
-            고객이 어떻게 주문을 변경할지 말한 다음에는 request_approval를 사용해.
+            고객이 어떻게 주문을 변경할지 말한 다음에는 TodRequestApproval를 사용해.
             고객이 진행할 주문 변경을 승인했다면 change_order를 사용해.
+            도구에 기존 주문 내역이 포함될 경우 기존 주문 내역도 함께 포함시켜 응답을 작성해줘.
 
             user_id: {user_info},
             selected_order: {selected_order}
@@ -218,13 +219,58 @@ order_change_prompt = ChatPromptTemplate.from_messages(
         MessagesPlaceholder(variable_name="messages"),
     ]
 ).partial(time=datetime.now())
+# order_change_prompt = ChatPromptTemplate.from_messages(
+#     [
+#         (
+#             "system",
+#             """
+#             너는 매우 정확하게 동작하는 라우팅봇이야.
+#             대화 기록을 꼼꼼히 파악 후 아래 조건에 따라 다음 노드를 출력해줘.
+            
+#             고객이 변경할 기존 주문 내역을 선택하라고 요청하지 않았다면 display_user_order를 출력해.
+#             고객이 변경할 주문을 선택했다면 request_order_change를 사용해.
+#             고객이 어떻게 주문을 변경할지 말했다면 request_approval를 사용해.
+#             고객이 진행할 주문 변경에 대해 동의했다면 change_order를 사용해.
+
+#             user_id: {user_info},
+#             current time: {time}.
+#             """,
+#         ),
+#         MessagesPlaceholder(variable_name="messages"),
+#     ]
+# ).partial(time=datetime.now())
+# order_change_prompt = ChatPromptTemplate.from_messages(
+#     [
+#         (
+#             "system",
+#             """
+#             너는 매우 정확하게 동작하는 라우팅봇이야.
+#             아래 조건에 따라 다음 노드를 출력해줘.
+#             아래 조건에 따라서만 출력이 결정돼야 해.
+            
+#             order_id가 주어지지 않았다면 display_user_order를 출력해.
+#             order_id가 주어지고 request_order_change_message가 주어지지 않았다면 request_order_change를 출력해.
+#             order_id와 request_order_change_message가 주어지고 request_order_change_message가 주어지지 않았다면 request_approval를 출력해.
+#             request_approval이 주어졌다면 use_order_change_tool를 출력해.
+
+#             user_id: {user_info},
+#             order_id: {order_id},
+#             request_order_change_message: {request_order_change_message}
+#             request_approval_message: {request_approval_message}
+#             current time: {time}.
+#             """,
+#         ),
+#         MessagesPlaceholder(variable_name="messages"),
+#     ]
+# ).partial(time=datetime.now())
 
 llm = ChatOpenAI()
-order_change_related_tools = [fetch_recent_order, ask_how_to_change, request_approval, change_order]
+# order_change_related_tools = [fetch_recent_order, ask_how_to_change, request_approval, change_order]
+order_change_related_tools = [fetch_recent_order, ask_how_to_change, change_order, TodRequestApproval]
 order_change_agent_with_tools = llm.bind_tools(tools=order_change_related_tools
                                                + [
                                                 #    TodDsplayUserOrder,
-                                                   CompleteOrEscalate
+                                                   CompleteOrEscalate,
                                                ])
 # order_change_runnable = order_change_prompt | llm
 order_change_runnable = order_change_prompt | order_change_agent_with_tools
@@ -335,25 +381,38 @@ llm =  ChatOpenAI()
 ask_order_change_runnable = ask_order_change_prompt | llm 
 
 
+# request_approval_prompt = ChatPromptTemplate.from_messages(
+#     [
+#         ("system", 
+#         """
+#         너는 수행할 작업 내용을 확인하는 주문봇이야.
+#         아래 단계에 따라 답변을 생성해.
+#         아래 단계를 따르지 않은 답변은 절대로 생성해선 안돼.
+#         1. 지금까지의 messages를 꼼꼼히 살펴보고 사용자가 요청한 작업을 제시해.
+#         2. 너가 파악한 사용자 요청이 맞는지 확인하는 메시지를 추가해. 정확한 상품명, 가격, 수량이 반드시 포함돼야 해.
+#         3. 사용자가 요청한 작업이 주문 변경 또는 주문 취소인 경우 사용자가 선택한 주문 내역을 추가해.
+
+#         주의사항
+#         사용자의 입력이 상품 목록의 정보와 다른 경우, 상품 목록 가운데 사용자 입력과 가장 유사한 정보로 사용자 입력을 대체해.
+#         너는 작업을 실제로 수행할 수는 없어. 사용자가 요청한 작업을 수행했다는 종류의 내용을 답변에 포함해서는 안돼.
+
+#         사용자 선택한 주문 내역(주문 변경 또는 주문 취소인 경우에만 존재)
+#         {selected_order}
+#         판매 중인 상품 목록
+#         {product_list}
+#         """
+#         ),
+#         MessagesPlaceholder(variable_name="messages"),
+#     ]
+    
+# ).partial(product_list=product_list)
 request_approval_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", 
         """
-        너는 수행할 작업 내용을 확인하는 주문봇이야.
-        아래 단계에 따라 답변을 생성해.
-        아래 단계를 따르지 않은 답변은 절대로 생성해선 안돼.
-        1. 지금까지의 messages를 꼼꼼히 살펴보고 사용자가 요청한 작업을 제시해.
-        2. 너가 파악한 사용자 요청이 맞는지 확인하는 메시지를 추가해. 정확한 상품명, 가격, 수량이 반드시 포함돼야 해.
-        3. 사용자가 요청한 작업이 주문 변경 또는 주문 취소인 경우 사용자가 선택한 주문 내역을 추가해.
-
-        주의사항
-        사용자의 입력이 상품 목록의 정보와 다른 경우, 상품 목록 가운데 사용자 입력과 가장 유사한 정보로 사용자 입력을 대체해.
-        너는 작업을 실제로 수행할 수는 없어. 사용자가 요청한 작업을 수행했다는 종류의 내용을 답변에 포함해서는 안돼.
-
-        사용자 선택한 주문 내역(주문 변경 또는 주문 취소인 경우에만 존재)
-        {selected_order}
-        판매 중인 상품 목록
-        {product_list}
+        너는 사용자의 요청 사항을 확인하는 주문봇이야.
+        도구 각 필드에 담긴 정보를 사용해 사용자에게 확인을 요청하는 메시지를 작성해줘.
+        
         """
         ),
         MessagesPlaceholder(variable_name="messages"),
