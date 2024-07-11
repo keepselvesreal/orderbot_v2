@@ -168,26 +168,50 @@ order_inquiry_runnable = order_inquiry_prompt | llm.bind_tools(
 )
 order_inquiry_runnable
 
+# order_change_prompt = ChatPromptTemplate.from_messages(
+#     [
+#         (
+#             "system",
+#             """
+#             너는 아래 조건에 따라 정해진 응답을 생성해야 해.
+#             메시지 내용이 응답 생성에 영향을 미쳐서는 안돼. 조건에 따라서만 응답을 생성해야 해.
+#             - order_id가 주어지지 않은 경우: step1
+#             - order_id가 주어지고 request_order_change_message가 주어지지 않은 경우: step2
+#             - order_id가 주어지고 request_order_change_message이 True인 경우: step3
+#             - order_id가 주어지고 request_order_change_message이 True이며 request_approval_message가 True인 경우: step4
+
+#             응답 전에 조건을 충족하는 응답인지 확실히 확인해줘.
+#             응답은 반드시 step1, step2, step3, step4 중 하나여야만 해. 
+#             절대 다른 응답을 생성하면 안돼.
+
+#             user_id: {user_info}
+#             order_id: {order_id}.
+#             request_order_change_message: {request_order_change_message}
+#             request_approval_message: {request_approval_message}.
+#             current time: {time}.
+#             """,
+#         ),
+#         MessagesPlaceholder(variable_name="messages"),
+#     ]
+# ).partial(time=datetime.now())
+
+from chain.langgraph_tools import TodDsplayUserOrder, ask_how_to_change, request_approval, change_order
 order_change_prompt = ChatPromptTemplate.from_messages(
     [
         (
             "system",
             """
-            너는 아래 조건에 따라 정해진 응답을 생성해야 해.
-            메시지 내용이 응답 생성에 영향을 미쳐서는 안돼. 조건에 따라서만 응답을 생성해야 해.
-            - order_id가 주어지지 않은 경우: step1
-            - order_id가 주어지고 request_order_change_message가 주어지지 않은 경우: step2
-            - order_id가 주어지고 request_order_change_message이 True인 경우: step3
-            - order_id가 주어지고 request_order_change_message이 True이며 request_approval_message가 True인 경우: step4
+            너는 주문 변경을 담당하는 유능한 비서야.
+            적절한 도구를 사용해 고객의 요청을 처리해.
+            고객이 응답이 필요할 때는 도구를 사용하지 말고 고객에게 응답을 부탁해.
 
-            응답 전에 조건을 충족하는 응답인지 확실히 확인해줘.
-            응답은 반드시 step1, step2, step3, step4 중 하나여야만 해. 
-            절대 다른 응답을 생성하면 안돼.
+            고객에게 변경할 기존 주문 내역을 제시하지 않았다면 get_recent_order를 사용해.
+            고객이 변경할 주문을 선택한 다음에는 ask_how_to_change를 사용해.
+            고객이 어떻게 주문을 변경할지 말한 다음에는 request_approval를 사용해.
+            고객이 진행할 주문 변경을 승인했다면 change_order를 사용해.
 
-            user_id: {user_info}
-            order_id: {order_id}.
-            request_order_change_message: {request_order_change_message}
-            request_approval_message: {request_approval_message}.
+            user_id: {user_info},
+            selected_order: {selected_order}
             current time: {time}.
             """,
         ),
@@ -196,7 +220,14 @@ order_change_prompt = ChatPromptTemplate.from_messages(
 ).partial(time=datetime.now())
 
 llm = ChatOpenAI()
-order_change_runnable = order_change_prompt | llm
+order_change_related_tools = [fetch_recent_order, ask_how_to_change, request_approval, change_order]
+order_change_agent_with_tools = llm.bind_tools(tools=order_change_related_tools
+                                               + [
+                                                #    TodDsplayUserOrder,
+                                                   CompleteOrEscalate
+                                               ])
+# order_change_runnable = order_change_prompt | llm
+order_change_runnable = order_change_prompt | order_change_agent_with_tools
 
 
 order_cancel_prompt = ChatPromptTemplate.from_messages(
@@ -245,6 +276,19 @@ ask_order_prompt = ChatPromptTemplate.from_messages(
         MessagesPlaceholder(variable_name="messages"),
     ]
 )
+# ask_order_prompt = ChatPromptTemplate.from_messages(
+#     [
+#         ("system", 
+#          """
+#          너는 사용자에게 변경할 주문을 묻는 주문봇이야.
+#          도구로 생성된 결과를 바탕으로 아래 조건을 만족하는 응답을 작성해줘.
+#          1. 응답에는 사용자의 지난 주문 내역이 담겨야 함. 주문 내역에는 주문 날짜, 주문 ID, 상품명, 수량, 가격을 모두 표시.
+#          2. 응답에는 변경을 원하는 주문으르 선택해달라는 메시지가 포함되어야 함.
+#          """
+#          ),
+#         MessagesPlaceholder(variable_name="messages"),
+#     ]
+# )
 llm =  ChatOpenAI()
 ask_order_runnable = ask_order_prompt | llm 
 
@@ -256,11 +300,11 @@ ask_order_change_prompt = ChatPromptTemplate.from_messages(
          """
          너는 사용자에게 주문을 어떻게 변경할지 묻는 주문봇이야.
          아래 단계에 따라 답변을 생성해.
-         1. 사용자가 선택한 주문 내역을 제시해. 주문 내역에는 주문 날짜, 주문 ID, 상품명, 수량, 가격이 모두 포함되어야 해.
+         1. 사용자가 선택한 주문 내역을 제시해. 주문 내역에는 주문 ID, 주문 날짜,  상품명, 수량, 가격이 모두 포함되어야 해.
          2. 사용자에게 주문을 어떻게 변경할지 알려달라고 말해.
 
          
-         변경을 요청한 주문 내역
+         사용자가 선택한 주문 내역
          {selected_order}
          """
          ),
@@ -268,6 +312,25 @@ ask_order_change_prompt = ChatPromptTemplate.from_messages(
     ]
     
 )
+# ask_order_change_prompt = ChatPromptTemplate.from_messages(
+#     [
+#         ("system", 
+#          """
+#          너는 사용자에게 주문을 어떻게 변경할지 묻는 주문봇이야.
+#          응답에는 아래 내용이 포함돼야 해.
+#          - 사용자가 선택한 주문 내역이 포함돼야 해. 주문 내역에는 주문 ID, 주문 날짜,  상품명, 수량, 가격이 모두 포함돼야 해.
+#            절대로 사용자가 선택한 주문 내역을 지어내면 안 돼.
+#          - 사용자에게 주문을 어떻게 변경할지 알려달라는 메시지가 포함돼야 해.
+
+#          사용자가 선택한 주문 내역
+#          {selected_order}
+
+#          """
+#          ),
+#         MessagesPlaceholder(variable_name="messages"),
+#     ]
+    
+# )
 llm =  ChatOpenAI()
 ask_order_change_runnable = ask_order_change_prompt | llm 
 

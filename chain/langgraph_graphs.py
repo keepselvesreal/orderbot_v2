@@ -243,51 +243,118 @@ def order_change(state: State):
         return {"messages": AIMessage(content="step3")} 
     elif state["order_id"] and state["request_order_change_message"] and state["request_approval_message"]:
         return {"messages": AIMessage(content="step4")}
-builder.add_node("order_change", order_change)
+# builder.add_node("order_change", order_change)    
+
+builder.add_node("order_change", Assistant(order_change_runnable))
 builder.add_edge("enter_order_change", "order_change")
 
-
-def order_change_route(state: State):
-    print("-"*77)
-    print("order_change_route 진입")
-    print("state\n", state)
-    
-    response = state["messages"][-1].content
-    # if response == "display_user_order":
-    if response == "step1":
-        return "display_user_order"
-    # elif response == "request_order_change":
-    elif response == "step2":
-        return "request_order_change"
-    # elif response == "request_approval":
-    elif response == "step3":
-        return "request_approval"
-    # elif response == "use_order_change_tool":
-    elif response == "step4":
-        return "use_order_change_tool"
-    
-builder.add_conditional_edges(
-    "order_change",
-    order_change_route,
-    {
-        "display_user_order": "display_user_order",
-        "request_order_change": "request_order_change",
-        "request_approval": "request_approval",
-        "use_order_change_tool": "use_order_change_tool",
-    },
+from chain.langgraph_assistants import order_change_related_tools
+builder.add_node(
+    "order_change_tools", create_tool_node_with_fallback(order_change_related_tools)
 )
 
+# def order_change_route(state: State):
+#     print("-"*77)
+#     print("order_change_route 진입")
+#     print("state\n", state)
+    
+#     response = state["messages"][-1].content
+#     # if response == "display_user_order":
+#     if response == "step1":
+#         return "display_user_order"
+#     # elif response == "request_order_change":
+#     elif response == "step2":
+#         return "request_order_change"
+#     # elif response == "request_approval":
+#     elif response == "step3":
+#         return "request_approval"
+#     # elif response == "use_order_change_tool":
+#     elif response == "step4":
+#         return "use_order_change_tool"
+    
+# builder.add_conditional_edges(
+#     "order_change",
+#     order_change_route,
+#     {
+#         "display_user_order": "display_user_order",
+#         "request_order_change": "request_order_change",
+#         "request_approval": "request_approval",
+#         "use_order_change_tool": "use_order_change_tool",
+#     },
+# )
+from chain.langgraph_tools import TodDsplayUserOrder
+def order_change_route(state):
+    print("-"*70)
+    print("order_change_route 진입")
+    route = tools_condition(state)
+    if route == END:
+        return END
+    tool_calls = state["messages"][-1].tool_calls
+    print("tool_name_to_call: ", tool_calls[0]["name"])
+    did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
+    if did_cancel:
+        return "leave_skill"
+    # elif tool_calls[0]["name"] == "fetch_recent_order":
+    #     return "display_user_order"
+    # elif tool_calls[0]["name"] == TodDsplayUserOrder.__name__:
+    #     return "display_user_order"
+    return "order_change_tools"
+# builder.add_edge("order_change_tools", "order_change")
+# builder.add_edge("order_change_tools", END)
+builder.add_conditional_edges("order_change", order_change_route)
 
+def order_change_tools_route(state):
+     print("-"*70)
+     print("order_change_tools_route 진입")
+     tool_message = state["messages"][-1]
+     print("tool_message\n", tool_message)
+     print("tool_name: ", tool_message.name)
+     tool_name = tool_message.name
+     
+     if tool_name == "fetch_recent_order":
+         return "display_user_order"
+     elif tool_name == "ask_how_to_change":
+         return "request_order_change"
+     elif tool_name == "request_approval":
+         return "request_approval"
+     elif tool_name == "change_order":
+         return "use_order_change_tool"
+     
+builder.add_conditional_edges("order_change_tools", order_change_tools_route)
+
+# def display_user_order(state: State):
+#     print("-"*77)
+#     print("display_user_order 진입")
+#     print("state\n", state)
+
+#     user_id = state["user_info"]
+#     print("user_id\n", user_id)
+#     messages = state["messages"]
+#     recent_orders = fetch_recent_order({"user_id": user_id})
+#     output = ask_order_runnable.invoke({"messages": messages, "orders": recent_orders})
+#     response = output.content
+#     print("response\n", response)
+
+#     return {"messages": response, "orders": recent_orders}
 def display_user_order(state: State):
+    import json
     print("-"*77)
     print("display_user_order 진입")
     print("state\n", state)
 
-    user_id = state["user_info"]
-    print("user_id\n", user_id)
     messages = state["messages"]
+    tool_result = state["messages"][-1]
+    print("tool_result\n", tool_result)
+    orders = tool_result.content
+    orders = json.loads(orders)
+    print("="*70)
+    print("orders\n", orders)
+    user_id = state["user_info"]
     recent_orders = fetch_recent_order({"user_id": user_id})
-    output = ask_order_runnable.invoke({"messages": messages, "orders": recent_orders})
+    print("="*70)
+    print("recent_orders\n", recent_orders)
+    output = ask_order_runnable.invoke({"messages": messages,
+                                        "orders": orders})
     response = output.content
     print("response\n", response)
 
@@ -297,17 +364,32 @@ builder.add_node("display_user_order", display_user_order)
 builder.add_edge("display_user_order", END)
 
 
+# def request_order_change(state: State):
+#     print("-"*77)
+#     print("request_order_change_message 진입")
+#     print("state\n", state)
+
+#     messages = state["messages"]
+#     selected_order = state["selected_order"]
+#     output = ask_order_change_runnable.invoke({"messages": messages, "selected_order": selected_order})
+#     response = output.content
+
+#     return {"messages": response, "request_order_change_message": True}
 def request_order_change(state: State):
     print("-"*77)
     print("request_order_change_message 진입")
     print("state\n", state)
 
     messages = state["messages"]
-    selected_order = state["selected_order"]
-    output = ask_order_change_runnable.invoke({"messages": messages, "selected_order": selected_order})
+    selected_order = messages[-1].content
+
+    # selected_order = state["selected_order"]
+    # output = ask_order_change_runnable.invoke({"messages": messages, "selected_order": selected_order})
+    output = ask_order_change_runnable.invoke({"messages": messages,
+                                               "selected_order": selected_order})
     response = output.content
 
-    return {"messages": response, "request_order_change_message": True}
+    return {"messages": response}
 
 builder.add_node("request_order_change", request_order_change)
 # builder.add_edge("request_order_change", "request_approval")

@@ -81,6 +81,40 @@ def fetch_product_list():
     return product_list
 
 @tool
+def get_product_list():
+    """
+    Gets a list of products.
+    This function retrieves and displays a list of products. 
+    """
+
+    product_list = """
+    [
+        {
+            "product_name": "떡케익5호",
+            "quantity": 1,
+            "price": 54000
+        },
+        {
+            "product_name": "무지개 백설기 케익",
+            "quantity": 1,
+            "price": 51500
+        },
+        {
+            "product_name": "미니 백설기",
+            "quantity": 35,
+            "price": 31500
+        },
+        {
+            "product_name": "개별 모듬팩",
+            "quantity": 1,
+            "price": 13500
+        }
+    ]
+    """
+    return product_list
+
+
+@tool
 def create_order(user_id: int, items :list[dict[str, str | int | float]]):
     """
     Places a new order.
@@ -227,6 +261,22 @@ def fetch_cancel_order():
     return "주문 취소 조회 완료"
 
 
+@tool
+def ask_how_to_change(selected_orders):
+    """
+    Asks customer how to change existing order the one selected 
+    """
+    return f"{selected_orders}"
+
+
+@tool
+def request_approval():
+    """
+    Requests customer confirm the task to be processed
+    """
+    return "고객의 요청을 정리하여 제시하고, 이 정리가 맞는지 확인하는 메시지를 작성해줘."
+
+
 # user_request.py로 옮기길 GPT는 제안
 from langchain_core.pydantic_v1 import BaseModel, Field
 
@@ -281,3 +331,9 @@ class ToOrderCancelAssistant(BaseModel):
 
     user_id: int = Field(description="The unique identifier of the user")
     request: str = Field(description="Any necessary follow-up questions the order cancel assistant should clarify before proceeding.")
+
+
+class TodDsplayUserOrder(BaseModel):
+    """Transfers work to a specialized assistant to display user's orders."""
+
+    request: str = Field(description="Any necessary follow-up messages display_user_order node should clarify before proceeding.")

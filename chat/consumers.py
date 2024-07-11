@@ -99,7 +99,8 @@ class ChatConsumer(WebsocketConsumer):
 
         if "confirmMessage" not in text_data_json:
             output = orderbot_graph.invoke({"messages": ("user", message),
-                                            "user_info": user_id},
+                                            "user_info": user_id,
+                                            "selected_order": selected_order,},
                                             # "order_id": order_id,
                                             # "selected_order": selected_order}, 
                                             config)
