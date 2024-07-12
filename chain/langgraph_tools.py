@@ -7,7 +7,7 @@ from django.db import transaction
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 
-from products.models import Product, Order, OrderItem
+from products.models import Product, Order, OrderStatus
 
 
 @tool
@@ -48,6 +48,7 @@ def lookup_policy(message: str):
     return temp_info
 
 
+@tool
 def fetch_product_list():
     """
     Fetchs a list of products.
@@ -195,12 +196,42 @@ def change_order(order_id: int, items: list[dict[str, str | int | float]]):
     
 
 @tool
-def cancel_order():
+def cancel_order(order_id):
     """
     Cancels an existing order.
-    This function processes the cancellation of an existing order
+    
+    Args:
+        order_id (int): The ID of the order to be canceled.
+    
+    Returns:
+        str: A message indicating the result of the cancellation process.
     """
-    return "주문 취소 완료"
+    try:
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(id=order_id)
+            
+            # 주문을 '주문 취소' 상태로 변경
+            order.order_status = 'order_canceled'
+            order.save()
+            
+            # OrderStatus에 상태 변경 기록
+            # UNIQUE constraint 오류 방지를 위해 get_or_create 사용
+            order_status, created = OrderStatus.objects.get_or_create(
+                order=order,
+                status='order_canceled',
+            )
+            
+            if not created:
+                return f"주문 {order_id}에 대한 취소 기록이 이미 존재합니다."
+            
+            return f"주문 {order_id}가 취소되었습니다."
+            
+    except Order.DoesNotExist:
+        return f"주문 {order_id}를 찾을 수 없습니다."
+
+    except Exception as e:
+        return f"주문 취소 중 오류가 발생했습니다: {str(e)}"
+
 
 @tool
 def fetch_recent_order(user_id):
@@ -245,20 +276,111 @@ def fetch_recent_order(user_id):
     
 
 @tool
-def fetch_change_order():
-    """
-    Views the details of a modified order.
-    This function retrieves and returns the details of the changes made to an order.
-    """
-    return "주문 변경 조회 완료"
+def get_all_orders(user_id):
+        """
+        Retrieves all orders for a specific user within an optional date range.
+        
+        Args:
+            user_id (int): The ID of the user whose orders are to be retrieved.
+            start_date (str, optional): The start date to filter orders in the format 'YYYY-MM-DD'. Defaults to None.
+            end_date (str, optional): The end date to filter orders in the format 'YYYY-MM-DD'. Defaults to None.
+        
+        Returns:
+            QuerySet: A QuerySet of Order objects.
+        """
+        print("-"*70)
+        print("get_all_orders 진입")
+        # print("startdate / enddate: ", f"{start_date} / {end_date}")
+        orders = Order.objects.filter(user__id=user_id).all()
+        # if start_date and end_date:
+        #     orders = orders.filter(created_at__date__range=[start_date, end_date])
+        # elif start_date:
+        #     orders = orders.filter(created_at__date__gte=start_date)
+        # elif end_date:
+        #     orders = orders.filter(created_at__date__lte=end_date)
+        
+        orders_data = [order.to_dict() for order in orders]
+        return orders_data
+
 
 @tool
-def fetch_cancel_order():
+def get_changeable_orders(order_change_type, start_date=None, end_date=None):
+        """
+        Retrieves orders that can be changed, excluding those that have been canceled.
+        
+        Args:
+            order_change_type (str): The type of order change to filter.
+            start_date (str, optional): The start date to filter orders in the format 'YYYY-MM-DD'. Defaults to None.
+            end_date (str, optional): The end date to filter orders in the format 'YYYY-MM-DD'. Defaults to None.
+        
+        Returns:
+            QuerySet: A QuerySet of Order objects that can be changed.
+        """
+        print("-"*70)
+        print("get_changeable_orders 진입")
+        print("startdate / enddate: ", f"{start_date} / {end_date}")
+        
+        orders = Order.objects.exclude(order_status="order_canceled")
+        
+        if start_date and end_date:
+            orders = orders.filter(created_at__date__range=[start_date, end_date])
+        elif start_date:
+            orders = orders.filter(created_at__date__gte=start_date)
+        elif end_date:
+            orders = orders.filter(created_at__date__lte=end_date)
+        
+        orders_data = [order.to_dict() for order in orders]
+        return orders_data
+
+
+@tool
+def get_change_order(user_id):
+    """
+    Views the details of a modified order.
+    
+    This function retrieves and returns the details of the changes made to an order.
+    
+    Args:
+        user_id (int): The ID of the user whose modified orders are to be retrieved.
+    
+    Returns:
+        dict: A dictionary containing the details of the modified orders.
+    """
+    try:
+        modified_orders = Order.objects.filter(user_id=user_id, order_status='order_changed')
+        if not modified_orders.exists():
+            return {"message": "No modified orders found for the user."}
+        
+        orders_data = [order.to_dict() for order in modified_orders]
+        return {"modified_orders": orders_data}
+    
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@tool
+def get_cancel_order(user_id):
     """
     Views the details of a canceled order.
+    
     This function retrieves and returns the details of a canceled order.
+    
+    Args:
+        user_id (int): The ID of the user whose canceled orders are to be retrieved.
+    
+    Returns:
+        dict: A dictionary containing the details of the canceled orders.
     """
-    return "주문 취소 조회 완료"
+    try:
+        canceled_orders = Order.objects.filter(user_id=user_id, order_status='order_canceled')
+        if not canceled_orders.exists():
+            return {"message": "No canceled orders found for the user."}
+        
+        orders_data = [order.to_dict() for order in canceled_orders]
+        return {"canceled_orders": orders_data}
+    
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @tool
@@ -319,6 +441,13 @@ class ToOrderAssistant(BaseModel):
     request: str = Field(description="Any necessary follow-up questions the order assistant should clarify before proceeding.")
 
 
+class ToRequestConfirmation(BaseModel):
+    """Transfers work to a specialized assistant to create a new order"""
+    selected_order : str = Field(description="고객이 선택한 기존 주문 내역")
+    customer_request: str = Field(description="고객의 요청 사항")
+    message_to_be_approved: str = Field(description="고객에게 내용 확인을 요청하는 메시지. 고객이 선택한 기존 주문 내역과 고객의 요청 사항을 모두 포함.")
+
+
 class ToOrderChangeAssistant(BaseModel):
     """Transfers work to a specialized assistant to handle order change."""
 
@@ -335,12 +464,18 @@ class ToOrderCancelAssistant(BaseModel):
 
 class TodDsplayUserOrder(BaseModel):
     """Transfers work to a specialized assistant to display user's orders."""
-
+    orders: str = Field()
     request: str = Field(description="Any necessary follow-up messages display_user_order node should clarify before proceeding.")
 
 
-class TodRequestApproval(BaseModel):
-    """Transfers work to a specialized assistant to request user's approval"""
+class ToHowToChange(BaseModel):
+    """Transfers work to a specialized assistant to ask a user how to change selected order"""
     selected_order : str = Field(description="고객이 선택한 기존 주문 내역")
-    customer_request: str = Field(description="고객의 요청 사항")
-    message_to_be_approved: str = Field(description="고객에게 내용 확인을 요청하는 메시지. 고객이 선택한 기존 주문 내역과 고객의 요청 사항을 모두 포함.")
+    # change_order_instructions: str = Field(description="고객에게 선택한 기존 주문 내역을 어떻게 변경할지 묻는 메시지")
+
+
+class ToRequestOrderConfirmation(BaseModel):
+    """Transfers work to a specialized assistant to request user's approval"""
+    product_list: str = Field(description="판매 중인 상품 목록")
+    customer_order_request: str = Field(description="고객의 주문 요청 사항")
+    message_to_be_confirmed: str = Field(description="고객의 주문 요청 내용에 대해 확인을 요청하는 메시지. 상품명과 상품 가격이 판매 중인 상품 목록과 일치해야 함.")
