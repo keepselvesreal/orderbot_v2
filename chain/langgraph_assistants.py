@@ -13,12 +13,13 @@ from .langgraph_tools import (
     lookup_policy, fetch_product_list,
     get_all_orders, get_changeable_orders, fetch_recent_order, get_change_order, get_cancel_order, 
     create_order, change_order, cancel_order,
+    
     # GPT는 아래 pydantic model을 user_request.py로 빼는 걸 추천
     CompleteOrEscalate, 
-    ToRequestOrderConfirmation,
-    ToHowToChange, ToRequestConfirmation,
-    ToOrderAssistant, ToOrderChangeAssistant, ToOrderCancelAssistant,
-    ToOrderInquiryAssistant,
+
+    ToOrderAssistant, ToOrderChangeAssistant, ToOrderCancelAssistant, ToOrderInquiryAssistant,
+    ToHowToChange, 
+    ToRequestConfirmation,
     )
 
 from products.models import Order
@@ -64,17 +65,6 @@ class Assistant:
         return {**add_state, "messages": result}
 
 
-"""
-특히 create_order 사용 시에는 도구 사용에 필요한 사용자 아이디와 사용자의 주문 내역을를 정확하게 파악해야 해.
-사용자의 주문 내역은 메시지 기록에서 확인할 수 있어.
-Please provide the order details in the following format:
-    items (list[dict[str, str | int | float]]): A list of dictionaries representing the order details. Each dictionary has the following keys:
-    'product_name': The name of the product (str)
-    'quantity': The quantity of the product (int)
-    'price': The price of the product (float)
-create_order를 사용해 실제로 주문을 생성하기 전에는 주문을 했다는 거짓말을 하면 안돼.
-
-"""
 order_create_prompt = ChatPromptTemplate.from_messages(
     [
         (
@@ -97,7 +87,7 @@ order_create_prompt = ChatPromptTemplate.from_messages(
     ]
 ).partial(time=datetime.now())
 
-order_create_related_tools = [fetch_product_list, ToRequestOrderConfirmation]
+order_create_related_tools = [fetch_product_list, ToRequestConfirmation]
 order_create_tool = [create_order]
 order_create_tools = order_create_related_tools + order_create_tool
 order_create_runnable = order_create_prompt | llm.bind_tools(order_create_tools)
@@ -155,31 +145,6 @@ request_order_confirmation_prompt = ChatPromptTemplate.from_messages(
 request_order_confirmation_runnable = request_order_confirmation_prompt | llm
 
 
-use_create_tool_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", 
-        """
-        너는 사용자 요청대로 새로운 주문을 하는 주문봇이야.
-        도구 사용에 필요한 사용자 아이디와 사용자의 주문 내역을를 정확하게 파악해야 해.
-        사용자의 주문 내역은 지금까지의 Messges에서 확인할 수 있어.
-        주문 상세내역을 작성 시 판매 상품 목록의 정보와 비교하여 반드시 정확한 정보를 기입해야 해. 
-        Please provide the order details in the following format:
-              items (list[dict[str, str | int | float]]): A list of dictionaries representing the order details. Each dictionary has the following keys:
-              'product_name': The name of the product (str)
-              'quantity': The quantity of the product (int)
-              'price': The price of the product (float)
-
-        Current user ID: {user_info}
-        Product_list: {product_list}
-        """
-        ),
-        MessagesPlaceholder(variable_name="messages"),
-    ]
-).partial(product_list=product_list)
-order_create_tool = [create_order]
-use_create_tool_runnable = use_create_tool_prompt | llm.bind_tools(order_create_tool)
-
-
 # order inquiry assistant
 order_inquiry_prompt = ChatPromptTemplate.from_messages(
     [
@@ -209,33 +174,6 @@ order_inquiry_runnable = order_inquiry_prompt | llm.bind_tools(
     inquiry_tools + [CompleteOrEscalate]
 )
 order_inquiry_runnable
-
-# order_change_prompt = ChatPromptTemplate.from_messages(
-#     [
-#         (
-#             "system",
-#             """
-#             너는 아래 조건에 따라 정해진 응답을 생성해야 해.
-#             메시지 내용이 응답 생성에 영향을 미쳐서는 안돼. 조건에 따라서만 응답을 생성해야 해.
-#             - order_id가 주어지지 않은 경우: step1
-#             - order_id가 주어지고 request_order_change_message가 주어지지 않은 경우: step2
-#             - order_id가 주어지고 request_order_change_message이 True인 경우: step3
-#             - order_id가 주어지고 request_order_change_message이 True이며 request_approval_message가 True인 경우: step4
-
-#             응답 전에 조건을 충족하는 응답인지 확실히 확인해줘.
-#             응답은 반드시 step1, step2, step3, step4 중 하나여야만 해. 
-#             절대 다른 응답을 생성하면 안돼.
-
-#             user_id: {user_info}
-#             order_id: {order_id}.
-#             request_order_change_message: {request_order_change_message}
-#             request_approval_message: {request_approval_message}.
-#             current time: {time}.
-#             """,
-#         ),
-#         MessagesPlaceholder(variable_name="messages"),
-#     ]
-# ).partial(time=datetime.now())
 
 
 order_change_prompt = ChatPromptTemplate.from_messages(
@@ -319,43 +257,11 @@ ask_order_prompt = ChatPromptTemplate.from_messages(
         MessagesPlaceholder(variable_name="messages"),
     ]
 )
-# ask_order_prompt = ChatPromptTemplate.from_messages(
-#     [
-#         ("system", 
-#          """
-#          너는 사용자에게 변경할 주문을 묻는 주문봇이야.
-#          도구로 생성된 결과를 바탕으로 아래 조건을 만족하는 응답을 작성해줘.
-#          1. 응답에는 사용자의 지난 주문 내역이 담겨야 함. 주문 내역에는 주문 날짜, 주문 ID, 상품명, 수량, 가격을 모두 표시.
-#          2. 응답에는 변경을 원하는 주문으르 선택해달라는 메시지가 포함되어야 함.
-#          """
-#          ),
-#         MessagesPlaceholder(variable_name="messages"),
-#     ]
-# )
 
 ask_order_runnable = ask_order_prompt | llm 
 
 
-
-# ask_order_change_prompt = ChatPromptTemplate.from_messages(
-#     [
-#         ("system", 
-#          """
-#          너는 사용자에게 주문을 어떻게 변경할지 묻는 주문봇이야.
-#          아래 단계에 따라 답변을 생성해.
-#          1. 사용자가 선택한 주문 내역을 제시해. 주문 내역에는 주문 ID, 주문 날짜,  상품명, 수량, 가격이 모두 포함되어야 해.
-#          2. 사용자에게 주문을 어떻게 변경할지 알려달라고 말해.
-
-         
-#          사용자가 선택한 주문 내역
-#          {selected_order}
-#          """
-#          ),
-#         MessagesPlaceholder(variable_name="messages"),
-#     ]
-    
-# )
-ask_order_change_prompt = ChatPromptTemplate.from_messages(
+ask_how_to_change_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", 
          """
@@ -386,35 +292,10 @@ ask_order_change_prompt = ChatPromptTemplate.from_messages(
     
 )
 
-ask_order_change_runnable = ask_order_change_prompt | llm 
+ask_how_to_change_runnable =ask_how_to_change_prompt | llm 
 
 
-# request_approval_prompt = ChatPromptTemplate.from_messages(
-#     [
-#         ("system", 
-#         """
-#         너는 수행할 작업 내용을 확인하는 주문봇이야.
-#         아래 단계에 따라 답변을 생성해.
-#         아래 단계를 따르지 않은 답변은 절대로 생성해선 안돼.
-#         1. 지금까지의 messages를 꼼꼼히 살펴보고 사용자가 요청한 작업을 제시해.
-#         2. 너가 파악한 사용자 요청이 맞는지 확인하는 메시지를 추가해. 정확한 상품명, 가격, 수량이 반드시 포함돼야 해.
-#         3. 사용자가 요청한 작업이 주문 변경 또는 주문 취소인 경우 사용자가 선택한 주문 내역을 추가해.
-
-#         주의사항
-#         사용자의 입력이 상품 목록의 정보와 다른 경우, 상품 목록 가운데 사용자 입력과 가장 유사한 정보로 사용자 입력을 대체해.
-#         너는 작업을 실제로 수행할 수는 없어. 사용자가 요청한 작업을 수행했다는 종류의 내용을 답변에 포함해서는 안돼.
-
-#         사용자 선택한 주문 내역(주문 변경 또는 주문 취소인 경우에만 존재)
-#         {selected_order}
-#         판매 중인 상품 목록
-#         {product_list}
-#         """
-#         ),
-#         MessagesPlaceholder(variable_name="messages"),
-#     ]
-    
-# ).partial(product_list=product_list)
-request_approval_prompt = ChatPromptTemplate.from_messages(
+request_order_change_confirmation_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", 
         """
@@ -472,7 +353,7 @@ request_approval_prompt = ChatPromptTemplate.from_messages(
     
 ).partial(product_list=product_list)
 
-request_approval_runnable = request_approval_prompt | llm 
+request_order_change_confirmation_runnable = request_order_change_confirmation_prompt | llm 
 
 
 request_order_cancel_confirmation_prompt = ChatPromptTemplate.from_messages(
@@ -520,53 +401,6 @@ request_order_cancel_confirmation_prompt = ChatPromptTemplate.from_messages(
 ).partial(product_list=product_list)
 
 request_order_cancel_confirmation_runnable = request_order_cancel_confirmation_prompt | llm 
-
-
-# use_order_change_tool_prompt = ChatPromptTemplate.from_messages(
-#     [
-#         ("system", 
-#          """
-#          너는 주문 변경을 처리하는 주문봇이야.
-#          도구를 사용해 사용자의 요청을 처리해줘.
-#          사용자의 요청을 꼼꼼히 확인해 도구 호출에 필요한 인자를 정확히 추출해줘.
-#          사용자의 메시지를 바탕으로 새로운 주문 상세내역을 작성할 때는 판매 상품 목록의 정보와 비교하여 반드시 정확한 정보를 기입. 
-#          Please provide the order details in the following format:
-#             items (list[dict[str, str | int | float]]): A list of dictionaries representing the order details. Each dictionary has the following keys:
-#             'product_name': The name of the product (str)
-#             'quantity': The quantity of the product (int)
-#             'price': The price of the product (float)
-
-#          Current user ID: {user_info}
-#          Product_list: {product_list}
-#          selected_order: {selected_order}
-#          """
-#         ),
-#         MessagesPlaceholder(variable_name="messages"),
-#     ]
-# ).partial(product_list=product_list)
-
-# order_change_tool = [change_order]
-# use_order_change_tool_runnable = use_order_change_tool_prompt | llm.bind_tools(order_change_tool)
-
-
-# use_order_cancel_tool_prompt = ChatPromptTemplate.from_messages(
-#     [
-#         ("system", 
-#          """
-#          너는 주문 취소를 처리하는 주문봇이야.
-#          도구를 사용해 사용자의 요청을 처리해줘.
-         
-#          Current user ID: {user_info}
-#          Product_list: {product_list}
-#          selected_order: {selected_order}
-#          """
-#         ),
-#         MessagesPlaceholder(variable_name="messages"),
-#     ]
-# ).partial(product_list=product_list)
-
-# order_cancel_tool = [cancel_order]
-# use_order_cancel_tool_runnable = use_order_change_tool_prompt | llm.bind_tools(order_cancel_tool)
 
 
 primary_assistant_prompt = ChatPromptTemplate.from_messages(

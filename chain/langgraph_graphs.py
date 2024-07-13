@@ -11,23 +11,24 @@ from .langgraph_assistants import (
     order_create_runnable,
     request_order_confirmation_runnable,
     present_product_list_runnable,
-    use_create_tool_runnable,
     order_create_related_tools,
     order_create_tool,
+
     order_inquiry_runnable,
     inquiry_tools,
+
     order_change_runnable,
     ask_order_runnable,
-    ask_order_change_runnable,
-    request_approval_runnable,
-    # use_order_change_tool_runnable,
+    ask_how_to_change_runnable,
+    request_order_change_confirmation_runnable,
     order_change_related_tools,
     order_change_tool,
+
     order_cancel_runnable,
     request_order_cancel_confirmation_runnable,
-    # use_order_cancel_tool_runnable,
     order_cancel_related_tools,
     order_cancel_tool,
+
     primary_assistant_runnable,
     primary_assistant_tools,
     
@@ -37,13 +38,13 @@ from .langgraph_tools import (
     fetch_product_list,
     fetch_recent_order,
     CompleteOrEscalate,
+    ToOrderInquiryAssistant, 
     ToOrderAssistant, 
     ToOrderChangeAssistant,
-    ToRequestOrderConfirmation,
     ToOrderCancelAssistant,
-    ToOrderInquiryAssistant, 
-    ToRequestConfirmation,
+
     ToHowToChange, 
+    ToRequestConfirmation,
 )
 
 from .langgraph_utilities import create_entry_node, create_tool_node_with_fallback
@@ -114,21 +115,11 @@ builder.add_node(
     "enter_order_create",
     create_entry_node("Order Create Assistant", "order_create"),
 )
-# builder.add_node("order_create", Assistant(order_create_runnable))
-# def order_create(state: State):
-#     print("-"*77)
-#     print("order_create 진입")
-#     print("state\n", state)
-#     from langchain_core.messages import AIMessage
-    
-#     if not state["product_presentation"]:
-#         return {"messages": AIMessage(content="present_product_list")}
-#     elif state["product_presentation"] and state["request_approval_message"] is None:
-#         return {"messages": AIMessage(content="request_approval")}
-#     elif state["product_presentation"] and state["request_approval_message"]:
-#         return {"messages": AIMessage(content="use_order_create_tool")}
-# builder.add_node("order_create", order_create)
+
+
 builder.add_node("order_create", Assistant(order_create_runnable))
+
+
 builder.add_edge("enter_order_create", "order_create")
 
 
@@ -139,12 +130,6 @@ def order_create_route(state):
     if route == END:
         return END
     
-    # messages = state["messages"]
-    # last_message = messages[-1]
-    # print("last_message\n", last_message)
-    # if last_message == "create_order":
-    #     return "extract_args_for_create_order"
-    
     tool_calls = state["messages"][-1].tool_calls
     print("tool_name_to_call: ", tool_calls[0]["name"])
     did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
@@ -152,8 +137,9 @@ def order_create_route(state):
         return "leave_skill"
     elif tool_calls[0]["name"] == "create_order":
         return "order_create_tool"
-    #     return "extract_args_for_create_order"
+
     return "order_create_related_tools"
+
 
 builder.add_conditional_edges("order_create", order_create_route)
 
@@ -163,7 +149,6 @@ builder.add_node(
     create_tool_node_with_fallback(order_create_related_tools)
     )
 
-# builder.add_edge("order_create_related_tools", "order_create")
 
 def order_create_related_tools_route(state):
      print("-"*70)
@@ -175,8 +160,9 @@ def order_create_related_tools_route(state):
 
      if tool_name == "fetch_product_list":
          return "present_product_list"
-     elif tool_name == ToRequestOrderConfirmation.__name__:
+     elif tool_name == ToRequestConfirmation.__name__:
          return "request_order_confirmation"
+
 
 builder.add_conditional_edges("order_create_related_tools", order_create_related_tools_route)
 
@@ -186,33 +172,11 @@ builder.add_node(
     create_tool_node_with_fallback(order_create_tool)
     )
 
-# builder.add_edge("order_create_tool", "order_create")
+
 builder.add_edge("order_create_tool", "reset_state_without_messages")
 
 
-# def order_create_route(state: State):
-#     print("-"*77)
-#     print("order_create_route 진입")
-#     print("state\n", state)
-    
-#     response = state["messages"][-1].content
-#     print("response: ", response)
-#     if response == "present_product_list":
-#         return "present_product_list"
-#     elif response == "request_approval":
-#         return "request_confirmation"
-#     elif response == "use_order_create_tool":
-#         return "use_order_create_tool"
-    
-# builder.add_conditional_edges(
-#     "order_create",
-#     order_create_route,
-#     {
-#         "present_product_list": "present_product_list",
-#         "request_approval": "request_confirmation",
-#         "use_order_create_tool": "use_order_create_tool",
-#     },
-# )
+builder.add_edge("reset_state_without_messages", END)
 
 
 def present_product_list(state: State):
@@ -226,7 +190,10 @@ def present_product_list(state: State):
 
     return {"messages": response} 
 
+
 builder.add_node("present_product_list", present_product_list)
+
+
 builder.add_edge("present_product_list", END)
 
 
@@ -240,10 +207,14 @@ def request_order_confirmation(state: State):
     
     return {"messages": response}
 
+
 builder.add_node("request_order_confirmation", request_order_confirmation)
+
+
 builder.add_edge("request_order_confirmation", END)
 
 
+# 현재 사용되고 있지 않은 노드
 def extract_args_for_create_order(state: State):
     print("-"*77)
     print("extract_args_for_create_order 진입")
@@ -251,10 +222,8 @@ def extract_args_for_create_order(state: State):
 
     messages = state["messages"]
     user_info = state["user_info"]
-    response = use_create_tool_runnable.invoke({"messages": messages,
-                                                "user_info": user_info})
-
-    return {"messages": response}
+    
+    pass
 
 # builder.add_node("extract_args_for_create_order", extract_args_for_create_order)
 # builder.add_edge("extract_args_for_create_order", "order_create_tool")
@@ -269,22 +238,17 @@ def reset_state_without_messages(state: State):
 builder.add_node("reset_state_without_messages", reset_state_without_messages)
 
 
-# builder.add_node("use_order_create_tool", Assistant(use_create_tool_runnable))
-# builder.add_node(
-#     "order_create_tool",
-#     create_tool_node_with_fallback(order_create_tool)
-#     )
-# builder.add_edge("use_order_create_tool", "order_create_tool")
-# builder.add_edge("order_create_tool", "reset_state_without_messages")
-
-
 #--------------------------------------------------------------------------------------------------------------------------------------
 # order inquiry sub-graph
 builder.add_node(
     "enter_order_inquiry",
     create_entry_node("Order Inqury Assistant", "order_inquiry"),
 )
+
+
 builder.add_node("order_inquiry", Assistant(order_inquiry_runnable))
+
+
 builder.add_edge("enter_order_inquiry", "order_inquiry")
 
 
@@ -292,7 +256,8 @@ builder.add_node(
     "inquiry_tools",
     create_tool_node_with_fallback(inquiry_tools),
 )
-# builder.add_edge("inquiry_tools", "order_inquiry")
+
+
 builder.add_edge("inquiry_tools", END)
 
 
@@ -315,6 +280,7 @@ def route_order_inquiry(
     if did_cancel:
         return "leave_skill"
     return "inquiry_tools"
+
 
 builder.add_conditional_edges("order_inquiry", route_order_inquiry)
 
@@ -353,6 +319,7 @@ builder.add_node(
     "order_change_related_tools", create_tool_node_with_fallback(order_change_related_tools)
 )
 
+
 def order_change_related_tools_route(state):
      print("-"*70)
      print("order_change_tools_route 진입")
@@ -368,12 +335,18 @@ def order_change_related_tools_route(state):
      elif tool_name == ToRequestConfirmation.__name__:
          return "request_comfirmation"
      
+
 builder.add_conditional_edges("order_change_related_tools", order_change_related_tools_route)
+
 
 builder.add_node(
     "order_change_tool", create_tool_node_with_fallback(order_change_tool)
 )
+
+
 builder.add_edge("order_change_tool", "reset_state_without_messages")
+
+
 builder.add_edge("reset_state_without_messages", END)
 
 
@@ -401,7 +374,10 @@ def display_user_order(state: State):
 
     return {"messages": response, "orders": recent_orders}
 
+
 builder.add_node("display_user_order", display_user_order)
+
+
 builder.add_edge("display_user_order", END)
 
 
@@ -411,36 +387,32 @@ def ask_how_to_change(state: State):
     print("state\n", state)
 
     messages = state["messages"]
-    response = ask_order_change_runnable.invoke({"messages": messages})
+    response = ask_how_to_change_runnable.invoke({"messages": messages})
     
     return {"messages": response}
 
+
 builder.add_node("ask_how_to_change", ask_how_to_change)
+
+
 builder.add_edge("ask_how_to_change", END)
 
 
-def request_confirmation(state: State):
+def request_order_change_confirmation(state: State):
     print("-"*77)
     print("request_confirmation 진입")
     print("state\n", state)
 
     messages = state["messages"]
-    response = request_approval_runnable.invoke({"messages": messages})
+    response = request_order_change_confirmation_runnable.invoke({"messages": messages})
     
     return {"messages": response}
 
-builder.add_node("request_confirmation", request_confirmation)
+
+builder.add_node("request_confirmation", request_order_change_confirmation)
+
+
 builder.add_edge("request_confirmation", END)
-
-
-# builder.add_node("use_order_change_tool", Assistant(use_order_change_tool_runnable))
-# builder.add_node(
-#     "order_change_tool",
-#     create_tool_node_with_fallback(order_change_tool)
-#     )
-# builder.add_edge("use_order_change_tool", "order_change_tool")
-# builder.add_edge("order_change_tool", "reset_state_without_messages")
-# builder.add_edge("reset_state_without_messages", END)
 
 
 #--------------------------------------------------------------------------------------------------------------------------------------
@@ -449,20 +421,11 @@ builder.add_node(
     "enter_order_cancel",
     create_entry_node("Order Cancel Assistant", "order_cancel"),
 )
+
+
 builder.add_node("order_cancel", Assistant(order_cancel_runnable))
-# def order_cancel(state: State):
-#     print("-"*77)
-#     print("order_cancel 진입")
-#     print("state\n", state)
-#     from langchain_core.messages import AIMessage
-    
-#     if not state["order_id"]:
-#         return {"messages": AIMessage(content="step1")}
-#     elif state["order_id"] and state["request_approval_message"] is None:
-#         return {"messages": AIMessage(content="step2")} 
-#     elif state["order_id"] and state["request_approval_message"]:
-#         return {"messages": AIMessage(content="step3")}
-# builder.add_node("order_cancel", order_cancel)
+
+
 builder.add_edge("enter_order_cancel", "order_cancel")
 
 
@@ -482,6 +445,7 @@ def order_cancel_route(state):
         return "order_cancel_tool"
     return "order_cancel_related_tools"
 
+
 builder.add_conditional_edges("order_cancel", order_cancel_route)
 
 
@@ -489,9 +453,11 @@ builder.add_node(
     "order_cancel_related_tools", create_tool_node_with_fallback(order_cancel_related_tools)
 )
 
+
 def order_cancel_related_tools_route(state):
      print("-"*70)
      print("order_cancel_tools_route 진입")
+     
      tool_message = state["messages"][-1]
      tool_name = tool_message.name
      print("tool_message\n", tool_message)
@@ -502,13 +468,18 @@ def order_cancel_related_tools_route(state):
      elif tool_name == ToRequestConfirmation.__name__:
          return "request_order_cancel_confirmation"
      
+
 builder.add_conditional_edges("order_cancel_related_tools", order_cancel_related_tools_route)
 
 
 builder.add_node(
     "order_cancel_tool", create_tool_node_with_fallback(order_cancel_tool)
 )
+
+
 builder.add_edge("order_cancel_tool", "reset_state_without_messages")
+
+
 builder.add_edge("reset_state_without_messages", END)
 
 
@@ -522,27 +493,25 @@ def request_order_cancel_confirmation(state: State):
 
     return {"messages": response}
 
+
 builder.add_node("request_order_cancel_confirmation", request_order_cancel_confirmation)
+
+
 builder.add_edge("request_order_cancel_confirmation", END)
-
-
-# builder.add_node("use_order_cancel_tool", Assistant(use_order_cancel_tool_runnable))
-# builder.add_node(
-#     "order_cancel_tool",
-#     create_tool_node_with_fallback(order_cancel_tool)
-#     )
-# builder.add_edge("use_order_cancel_tool", "order_cancel_tool")
-# builder.add_edge("order_cancel_tool", "reset_state_without_messages")
-# builder.add_edge("reset_state_without_messages", END)
 
 
 #'--------------------------------------------------------------------------------------------------------------------------------------
 # Primary assistant
 builder.add_node("primary_assistant", Assistant(primary_assistant_runnable))
+
+
 builder.add_node(
     "primary_assistant_tools", create_tool_node_with_fallback(primary_assistant_tools)
 )
+
+
 builder.add_edge("primary_assistant_tools", "primary_assistant")
+
 
 def route_primary_assistant(
         state: State,
@@ -574,6 +543,7 @@ def route_primary_assistant(
         return "primary_assistant_tools"
     raise ValueError("Invalid route")
 
+
 builder.add_conditional_edges(
     "primary_assistant",
     route_primary_assistant,
@@ -589,6 +559,8 @@ builder.add_conditional_edges(
 
 
 memory = SqliteSaver.from_conn_string(":memory:")
+
+
 orderbot_graph = builder.compile(
     checkpointer=memory,
     interrupt_before=["order_create_tool", "order_change_tool", "order_cancel_tool"]

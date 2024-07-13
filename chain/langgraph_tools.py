@@ -81,6 +81,7 @@ def fetch_product_list():
     """
     return product_list
 
+
 @tool
 def get_product_list():
     """
@@ -148,6 +149,7 @@ def create_order(user_id: int, items :list[dict[str, str | int | float]]):
             total_price += Decimal(item["price"]) * Decimal(item["quantity"])
 
         return order
+
 
 @tool
 def change_order(order_id: int, items: list[dict[str, str | int | float]]):
@@ -274,7 +276,8 @@ def fetch_recent_order(user_id):
     except ObjectDoesNotExist:
         return "ObjectDoesNotExist" # 임시
     
-
+    
+import json
 @tool
 def get_all_orders(user_id):
         """
@@ -300,7 +303,8 @@ def get_all_orders(user_id):
         #     orders = orders.filter(created_at__date__lte=end_date)
         
         orders_data = [order.to_dict() for order in orders]
-        return orders_data
+        orders_json = json.dumps(orders_data, ensure_ascii=False)
+        return orders_json
 
 
 @tool
@@ -474,7 +478,7 @@ class ToHowToChange(BaseModel):
     # change_order_instructions: str = Field(description="고객에게 선택한 기존 주문 내역을 어떻게 변경할지 묻는 메시지")
 
 
-class ToRequestOrderConfirmation(BaseModel):
+class ToRequestConfirmation(BaseModel):
     """Transfers work to a specialized assistant to request user's approval"""
     product_list: str = Field(description="판매 중인 상품 목록")
     customer_order_request: str = Field(description="고객의 주문 요청 사항")
