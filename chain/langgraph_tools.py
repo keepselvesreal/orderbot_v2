@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Union
 from decimal import Decimal
 
 from langchain_core.runnables import ensure_config
@@ -120,15 +120,20 @@ def get_product_list():
 def create_order(user_id: int, items :list[dict[str, str | int | float]]):
     """
     Places a new order.
-    This function processes a new order request and confirms
+    This function processes a new order request and confirms it by creating an order and its related items in the database.
 
     Args:
         user_id (int): The ID of the user placing the order.
         items (list[dict[str, str | int | float]]): A list of dictionaries representing the order details. Each dictionary has the following keys:
-            - "product_name": The name of the product (str)
-            - "quantity": The quantity of the product (int)
-            - "price": The price of the product (float)
+            - "product_name" (str): The name of the product.
+            - "quantity" (int): The quantity of the product.
+            - "price" (float): The price of the product.
 
+    Example:
+        items = [
+            {"product_name": "떡케익5호", "quantity": 2, "price": 54000.0},
+            {"product_name": "무지개 백설기 케익", "quantity": 1, "price": 51500.0}
+        ]
     """
     print("-"*70)
     print("create_order 진입")
@@ -276,7 +281,7 @@ def fetch_recent_order(user_id):
     except ObjectDoesNotExist:
         return "ObjectDoesNotExist" # 임시
     
-    
+
 import json
 @tool
 def get_all_orders(user_id):
@@ -464,6 +469,13 @@ class ToOrderCancelAssistant(BaseModel):
 
     user_id: int = Field(description="The unique identifier of the user")
     request: str = Field(description="Any necessary follow-up questions the order cancel assistant should clarify before proceeding.")
+
+
+
+class ExtractOrderArgs(BaseModel):
+    """Transfers work to a specialized assistant to request user's approval"""
+    user_id: int = Field(description="The ID of the user placing the order.")
+    items: List[Dict[str, Union[str, int, float]]] = Field(description="A list of dictionaries representing the order details. Each dictionary has the following keys: 'product_name' (str): The name of the product. 'quantity' (int): The quantity of the product. 'price' (float): The price of the product.")
 
 
 class TodDsplayUserOrder(BaseModel):

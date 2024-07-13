@@ -43,6 +43,8 @@ from .langgraph_tools import (
     ToOrderChangeAssistant,
     ToOrderCancelAssistant,
 
+    ExtractOrderArgs,
+
     ToHowToChange, 
     ToRequestConfirmation,
 )
@@ -135,8 +137,10 @@ def order_create_route(state):
     did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
     if did_cancel:
         return "leave_skill"
-    elif tool_calls[0]["name"] == "create_order":
-        return "order_create_tool"
+    # elif tool_calls[0]["name"] == "create_order":
+    elif tool_calls[0]["name"] == ExtractOrderArgs.__name__:
+        return "extract_args_for_create_order"
+        # return "order_create_tool"
 
     return "order_create_related_tools"
 
@@ -165,6 +169,26 @@ def order_create_related_tools_route(state):
 
 
 builder.add_conditional_edges("order_create_related_tools", order_create_related_tools_route)
+
+
+
+# 현재 사용되고 있지 않은 노드
+def extract_args_for_create_order(state: State):
+    print("-"*77)
+    print("extract_args_for_create_order 진입")
+    print("state\n", state)
+
+    tool_call_id = state["messages"][-1].tool_calls[0]["id"]
+    args = state["messages"][-1].tool_calls[0]["args"]
+    tool_message = ToolMessage(content=f"{args}",
+                               tool_call_id=tool_call_id,)
+    
+    return {"messages": [tool_message]}
+
+builder.add_node("extract_args_for_create_order", extract_args_for_create_order)
+
+
+builder.add_edge("extract_args_for_create_order", "order_create_tool")
 
 
 builder.add_node(
@@ -212,21 +236,6 @@ builder.add_node("request_order_confirmation", request_order_confirmation)
 
 
 builder.add_edge("request_order_confirmation", END)
-
-
-# 현재 사용되고 있지 않은 노드
-def extract_args_for_create_order(state: State):
-    print("-"*77)
-    print("extract_args_for_create_order 진입")
-    print("state\n", state)
-
-    messages = state["messages"]
-    user_info = state["user_info"]
-    
-    pass
-
-# builder.add_node("extract_args_for_create_order", extract_args_for_create_order)
-# builder.add_edge("extract_args_for_create_order", "order_create_tool")
 
 
 def reset_state_without_messages(state: State):

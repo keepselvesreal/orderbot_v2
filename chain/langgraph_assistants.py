@@ -18,6 +18,9 @@ from .langgraph_tools import (
     CompleteOrEscalate, 
 
     ToOrderAssistant, ToOrderChangeAssistant, ToOrderCancelAssistant, ToOrderInquiryAssistant,
+    
+    ExtractOrderArgs,
+
     ToHowToChange, 
     ToRequestConfirmation,
     )
@@ -73,11 +76,12 @@ order_create_prompt = ChatPromptTemplate.from_messages(
             너는 주문을 생성하는 유능한 주문봇이야.
             적절한 도구를 사용해 고객의 요청을 처리해줘..
             고객이 응답이 필요할 때는 도구를 사용하지 말고 고객에게 응답을 부탁해.
-            도구 사용 시 도구 사용에 필요한 인자를 모두 정확하게 추출해줘.
+            도구 사용 시 도구 사용에 필요한 인자를 모두 정확하게 추출해야 해.
+            도구 사용에 필요한 인자는 아래 메시지에서 추출하면 돼.
             
-            1. 판매 중인 상품 목록을 제시하지 않았다면 fetch_product_list를 사용해.
-            2. 고객이 주문할 품목을 말했다면 TodOrderRequestConfirmation를 사용해.
-            3. 고객이 주문을 진행하려는 내용에 동의했다면 create_order를 응답으로 출력해.
+            1. 판매 중인 상품 목록을 제시하지 않았다면 fetch_product_list 도구를 사용해.
+            2. 고객이 주문할 품목을 말했다면 TodOrderRequestConfirmation 도규를 사용해.
+            3. 고객이 주문을 진행하려는 내용에 동의했다면 ExtractOrderArgs 도구를 사용해.
 
             user_id: {user_info},
             current time: {time}.
@@ -87,10 +91,10 @@ order_create_prompt = ChatPromptTemplate.from_messages(
     ]
 ).partial(time=datetime.now())
 
-order_create_related_tools = [fetch_product_list, ToRequestConfirmation]
+order_create_related_tools = [fetch_product_list, ToRequestConfirmation, ExtractOrderArgs]
 order_create_tool = [create_order]
-order_create_tools = order_create_related_tools + order_create_tool
-order_create_runnable = order_create_prompt | llm.bind_tools(order_create_tools)
+# order_create_tools = order_create_related_tools + order_create_tool
+order_create_runnable = order_create_prompt | llm.bind_tools(order_create_related_tools)
 
 
 present_product_list_prompt = ChatPromptTemplate.from_messages(
@@ -143,6 +147,19 @@ request_order_confirmation_prompt = ChatPromptTemplate.from_messages(
     
 )
 request_order_confirmation_runnable = request_order_confirmation_prompt | llm
+
+
+extract_args_for_create_order_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", 
+        """
+        너는 
+        """
+        ),
+        MessagesPlaceholder(variable_name="messages"),
+    ]
+    
+)
 
 
 # order inquiry assistant
