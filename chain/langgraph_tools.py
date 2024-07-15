@@ -168,6 +168,12 @@ def change_order(order_id: int, items: list[dict[str, str | int | float]]):
             - "product_name": The name of the product (str)
             - "quantity": The quantity of the product (int)
             - "price": The price of the product (float)
+
+    Example:
+        items = [
+            {"product_name": "떡케익5호", "quantity": 2, "price": 54000.0},
+            {"product_name": "무지개 백설기 케익", "quantity": 1, "price": 51500.0}
+        ]
     """
     print("="*70)
     print("change_order 진입")
@@ -361,7 +367,7 @@ def get_change_order(user_id):
             return {"message": "No modified orders found for the user."}
         
         orders_data = [order.to_dict() for order in modified_orders]
-        return {"modified_orders": orders_data}
+        return orders_data
     
     except Exception as e:
         return {"error": str(e)}
@@ -386,7 +392,8 @@ def get_cancel_order(user_id):
             return {"message": "No canceled orders found for the user."}
         
         orders_data = [order.to_dict() for order in canceled_orders]
-        return {"canceled_orders": orders_data}
+        orders_json = json.dumps(orders_data, ensure_ascii=False)
+        return orders_json
     
     except Exception as e:
         return {"error": str(e)}
@@ -450,11 +457,12 @@ class ToOrderAssistant(BaseModel):
     request: str = Field(description="Any necessary follow-up questions the order assistant should clarify before proceeding.")
 
 
-class ToRequestConfirmation(BaseModel):
+class ToRequestOrderChangeConfirmation(BaseModel):
     """Transfers work to a specialized assistant to create a new order"""
     selected_order : str = Field(description="고객이 선택한 기존 주문 내역")
     customer_request: str = Field(description="고객의 요청 사항")
-    message_to_be_approved: str = Field(description="고객에게 내용 확인을 요청하는 메시지. 고객이 선택한 기존 주문 내역과 고객의 요청 사항을 모두 포함.")
+    new_order : str = Field(description="고객의 요청 사항이 반영된 새로운 주문")
+    message_to_be_approved: str = Field(description="고객에게 내용 확인을 요청하는 메시지. 고객이 선택한 기존 주문 내역과 새로운 주문 모두 포함.")
 
 
 class ToOrderChangeAssistant(BaseModel):

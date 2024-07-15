@@ -92,7 +92,7 @@ class ChatConsumer(WebsocketConsumer):
             orderbot_graph.update_state(config, {"order_id": order_id,
                                                  "selected_order": selected_order,
                                                  "orders": None})
-            message = "요청한 작업을 수행할 주문은 아래와 같아."
+            message = f"selected_order: {selected_order}"
         self.confirm_message = text_data_json.get("confirmMessage")
         print("self.confirm_message: ", self.confirm_message)
         self.tool_call_id = text_data_json.get("toolCallId")

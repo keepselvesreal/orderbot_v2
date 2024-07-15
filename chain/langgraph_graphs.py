@@ -38,15 +38,16 @@ from .langgraph_tools import (
     fetch_product_list,
     fetch_recent_order,
     CompleteOrEscalate,
+
     ToOrderInquiryAssistant, 
     ToOrderAssistant, 
     ToOrderChangeAssistant,
     ToOrderCancelAssistant,
 
-    ExtractOrderArgs,
+    ToRequestConfirmation,
 
     ToHowToChange, 
-    ToRequestConfirmation,
+    ToRequestOrderChangeConfirmation,
 )
 
 from .langgraph_utilities import create_entry_node, create_tool_node_with_fallback
@@ -111,6 +112,54 @@ def pop_dialog_state(state: State) -> dict:
 builder.add_node("leave_skill", pop_dialog_state)
 builder.add_edge("leave_skill", "primary_assistant")
 
+
+#--------------------------------------------------------------------------------------------------------------------------------------
+# order inquiry sub-graph
+builder.add_node(
+    "enter_order_inquiry",
+    create_entry_node("Order Inqury Assistant", "order_inquiry"),
+)
+
+
+builder.add_node("order_inquiry", Assistant(order_inquiry_runnable))
+
+
+builder.add_edge("enter_order_inquiry", "order_inquiry")
+
+
+builder.add_node(
+    "inquiry_tools",
+    create_tool_node_with_fallback(inquiry_tools),
+)
+
+
+builder.add_edge("inquiry_tools", END)
+
+
+def route_order_inquiry(
+        state: State,
+) -> Literal[
+    "inquiry_tools",
+    "leave_skill",
+    "__end__"
+]:
+    print("-"*77)
+    print("route_order_inquiry 진입")
+    print("state\n", state)
+
+    route = tools_condition(state)
+    if route == END:
+        return END
+    tool_calls = state["messages"][-1].tool_calls
+    did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
+    if did_cancel:
+        return "leave_skill"
+    return "inquiry_tools"
+
+
+builder.add_conditional_edges("order_inquiry", route_order_inquiry)
+
+
 #--------------------------------------------------------------------------------------------------------------------------------------
 # order create sub-graph
 builder.add_node(
@@ -137,10 +186,8 @@ def order_create_route(state):
     did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
     if did_cancel:
         return "leave_skill"
-    # elif tool_calls[0]["name"] == "create_order":
-    elif tool_calls[0]["name"] == ExtractOrderArgs.__name__:
-        return "extract_args_for_create_order"
-        # return "order_create_tool"
+    elif tool_calls[0]["name"] == "create_order":
+        return "order_create_tool"
 
     return "order_create_related_tools"
 
@@ -169,26 +216,6 @@ def order_create_related_tools_route(state):
 
 
 builder.add_conditional_edges("order_create_related_tools", order_create_related_tools_route)
-
-
-
-# 현재 사용되고 있지 않은 노드
-def extract_args_for_create_order(state: State):
-    print("-"*77)
-    print("extract_args_for_create_order 진입")
-    print("state\n", state)
-
-    tool_call_id = state["messages"][-1].tool_calls[0]["id"]
-    args = state["messages"][-1].tool_calls[0]["args"]
-    tool_message = ToolMessage(content=f"{args}",
-                               tool_call_id=tool_call_id,)
-    
-    return {"messages": [tool_message]}
-
-builder.add_node("extract_args_for_create_order", extract_args_for_create_order)
-
-
-builder.add_edge("extract_args_for_create_order", "order_create_tool")
 
 
 builder.add_node(
@@ -248,53 +275,6 @@ builder.add_node("reset_state_without_messages", reset_state_without_messages)
 
 
 #--------------------------------------------------------------------------------------------------------------------------------------
-# order inquiry sub-graph
-builder.add_node(
-    "enter_order_inquiry",
-    create_entry_node("Order Inqury Assistant", "order_inquiry"),
-)
-
-
-builder.add_node("order_inquiry", Assistant(order_inquiry_runnable))
-
-
-builder.add_edge("enter_order_inquiry", "order_inquiry")
-
-
-builder.add_node(
-    "inquiry_tools",
-    create_tool_node_with_fallback(inquiry_tools),
-)
-
-
-builder.add_edge("inquiry_tools", END)
-
-
-def route_order_inquiry(
-        state: State,
-) -> Literal[
-    "inquiry_tools",
-    "leave_skill",
-    "__end__"
-]:
-    print("-"*77)
-    print("route_order_inquiry 진입")
-    print("state\n", state)
-
-    route = tools_condition(state)
-    if route == END:
-        return END
-    tool_calls = state["messages"][-1].tool_calls
-    did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
-    if did_cancel:
-        return "leave_skill"
-    return "inquiry_tools"
-
-
-builder.add_conditional_edges("order_inquiry", route_order_inquiry)
-
-
-#--------------------------------------------------------------------------------------------------------------------------------------
 # order change sub-graph
 builder.add_node(
     "enter_order_change",
@@ -341,8 +321,8 @@ def order_change_related_tools_route(state):
          return "display_user_order"
      elif tool_name == ToHowToChange.__name__:
         return "ask_how_to_change"
-     elif tool_name == ToRequestConfirmation.__name__:
-         return "request_comfirmation"
+     elif tool_name == ToRequestOrderChangeConfirmation.__name__:
+         return "request_order_change_confirmation"
      
 
 builder.add_conditional_edges("order_change_related_tools", order_change_related_tools_route)
@@ -418,10 +398,10 @@ def request_order_change_confirmation(state: State):
     return {"messages": response}
 
 
-builder.add_node("request_confirmation", request_order_change_confirmation)
+builder.add_node("request_order_change_confirmation", request_order_change_confirmation)
 
 
-builder.add_edge("request_confirmation", END)
+builder.add_edge("request_order_change_confirmation", END)
 
 
 #--------------------------------------------------------------------------------------------------------------------------------------
