@@ -107,13 +107,11 @@
 
 
     let currentOrderId = null; 
-    let currentOrderDetails = null;
-    let currentRequestType = null;
     let currentConfirmMessage = null;
     let currentToolCallId = null;
     let orderSelected = false; // 주문이 선택되었는지 여부를 추적
     
-
+    
     chatSocket.onmessage = function(event) {
         console.log("Message received:", event.data);  // 메시지 수신 로그
         const data = JSON.parse(event.data);
@@ -151,8 +149,7 @@
         if (typeof data.confirm_message !== 'undefined' && data.confirm_message !== null) {
             <!-- console.log("confirm_message 존재!", data.confirm_message) -->
             console.log("confirm_message 존재!", data)
-            currentOrderId = data.order_id;
-            currentRequestType = data.request_type;
+            
             currentConfirmMessage = data.confirm_message;
             currentToolCallId = data.tool_call_id;
         }
@@ -187,9 +184,7 @@
             if (currentOrderId) {
                 data.orderId = currentOrderId;
             }
-            if (currentRequestType) {
-                data.requestType = currentRequestType;
-            }
+            
             if (currentConfirmMessage) {
                 data.confirmMessage = currentConfirmMessage;
             }
@@ -208,10 +203,11 @@
 
             // 한 번 보낸 후에는 다시 초기화
             currentOrderId = null;
-            currentRequestType = null;
+            
             currentConfirmMessage = null;
-            currentApprovalRequest = null;
-            console.log("할당값 초기화\n", currentOrderId, currentRequestType, currentConfirmMessage, currentApprovalRequest)
+            currentToolCallId = null;
+            
+            console.log("할당값 초기화\n", currentOrderId, currentConfirmMessage)
             
         }
     });
@@ -268,7 +264,7 @@
     
                     // 주문 변경/취소 요청을 서버로 전송
                     currentOrderId = order.id;
-                    currentOrderDetails = orderDetails;
+                    
                     chatSocket.send(JSON.stringify({
                         orderDetails: orderDetails,
                         message: null,

@@ -19,9 +19,12 @@ from .langgraph_tools import (
 
     ToOrderAssistant, ToOrderChangeAssistant, ToOrderCancelAssistant, ToOrderInquiryAssistant,
 
-    ToRequestConfirmation,
+    ToRequestOrderConfirmation,
+
     ToHowToChange, 
     ToRequestOrderChangeConfirmation,
+
+    ToRequestOrderCancelConfirmation,
     )
 
 from products.models import Order
@@ -124,7 +127,7 @@ order_create_prompt = ChatPromptTemplate.from_messages(
 ).partial(time=datetime.now(),
           product_list=product_list)
 
-order_create_related_tools = [fetch_product_list, ToRequestConfirmation]
+order_create_related_tools = [fetch_product_list, ToRequestOrderConfirmation]
 order_create_tool = [create_order]
 order_create_tools = order_create_related_tools + order_create_tool
 order_create_runnable = order_create_prompt | llm.bind_tools(order_create_tools)
@@ -193,7 +196,6 @@ order_change_prompt = ChatPromptTemplate.from_messages(
             함수 사용 시 함수 사용에 필요한 인자를 모두 추출해야 해.
             고객이 응답이 필요할 때는 함수를 사용하지 말고 고객에게 응답을 부탁해.
 
-
             고객에게 변경할 기존 주문 내역을 제시하지 않았다면 fetch_recent_order를 사용해.
             고객이 변경할 주문을 선택한 다음에는 ToHowToChange를 사용해.
             고객이 어떻게 주문을 변경할지 말한 다음에는 ToRequestOrderChangeConfirmation를 사용해.
@@ -218,36 +220,6 @@ order_change_agent_with_tools = llm.bind_tools(tools=order_change_tools
                                                ])
 # order_change_runnable = order_change_prompt | llm
 order_change_runnable = order_change_prompt | order_change_agent_with_tools
-
-
-order_cancel_prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            """
-            너는 주문 변경을 담당하는 유능한 비서야.
-            적절한 도구를 사용해 고객의 요청을 처리해.
-            도구를 사용할 때는 도구 사용 조건을 확실히 확인한 후 조건을 충족할 때만 사용하도록 주의해줘.
-            고객이 응답이 필요할 때는 도구를 사용하지 말고 고객에게 응답을 부탁해.
-
-            취소할 주문을 선택할 수 있는 기존 주문 내역을 제시하지 않았다면 fetch_recent_order를 사용해.
-            고객이 취소할 주문을 선택했다면 ToRequestConfirmation를 사용해.
-            고객이 취소할 주문을 확인했다면 cancel_order를 사용해.
-
-
-            user_id: {user_info},
-            selected_order: {selected_order}
-            current time: {time}.
-            """,
-        ),
-        MessagesPlaceholder(variable_name="messages"),
-    ]
-).partial(time=datetime.now())
-
-order_cancel_related_tools = [fetch_recent_order, ToRequestConfirmation]
-order_cancel_tool = [cancel_order]
-order_cancel_tools = order_cancel_related_tools + order_cancel_tool
-order_cancel_runnable = order_cancel_prompt | llm.bind_tools(order_cancel_tools)
 
 
 ask_order_prompt = ChatPromptTemplate.from_messages(
@@ -351,6 +323,35 @@ request_order_change_confirmation_prompt = ChatPromptTemplate.from_messages(
 ).partial(product_list=product_list)
 
 request_order_change_confirmation_runnable = request_order_change_confirmation_prompt | llm 
+
+
+order_cancel_prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """
+            너는 주문 취소를 담당하는 유능한 비서야.
+            적절한 도구를 사용해 고객의 요청을 처리해.
+            각 도구의 사용 조건을 확실히 확인한 후 함수를 사용해야 해.
+            도구 사용 후에는 사용자의 입력을 기다려야 해. 그러므로 두 개의 도구를 연속해서 사용하면 안 돼.
+
+            취소할 주문을 선택할 수 있는 기존 주문 내역을 제시하지 않았다면 fetch_recent_order 도구를 사용해.
+            고객이 취소할 주문을 선택했다면 ToRequestConfirmation 도구를 사용해.
+            고객이 취소할 주문을 확인했다면 cancel_order 도구를 사용해.
+
+
+            user_id: {user_info},
+            current time: {time}.
+            """,
+        ),
+        MessagesPlaceholder(variable_name="messages"),
+    ]
+).partial(time=datetime.now())
+
+order_cancel_related_tools = [fetch_recent_order, ToRequestOrderCancelConfirmation]
+order_cancel_tool = [cancel_order]
+order_cancel_tools = order_cancel_related_tools + order_cancel_tool
+order_cancel_runnable = order_cancel_prompt | llm.bind_tools(order_cancel_tools)
 
 
 request_order_cancel_confirmation_prompt = ChatPromptTemplate.from_messages(

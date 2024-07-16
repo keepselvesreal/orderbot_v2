@@ -457,14 +457,6 @@ class ToOrderAssistant(BaseModel):
     request: str = Field(description="Any necessary follow-up questions the order assistant should clarify before proceeding.")
 
 
-class ToRequestOrderChangeConfirmation(BaseModel):
-    """Transfers work to a specialized assistant to create a new order"""
-    selected_order : str = Field(description="고객이 선택한 기존 주문 내역")
-    customer_request: str = Field(description="고객의 요청 사항")
-    new_order : str = Field(description="고객의 요청 사항이 반영된 새로운 주문")
-    message_to_be_approved: str = Field(description="고객에게 내용 확인을 요청하는 메시지. 고객이 선택한 기존 주문 내역과 새로운 주문 모두 포함.")
-
-
 class ToOrderChangeAssistant(BaseModel):
     """Transfers work to a specialized assistant to handle order change."""
 
@@ -479,11 +471,11 @@ class ToOrderCancelAssistant(BaseModel):
     request: str = Field(description="Any necessary follow-up questions the order cancel assistant should clarify before proceeding.")
 
 
-
-class ExtractOrderArgs(BaseModel):
-    """Transfers work to a specialized assistant to request user's approval"""
-    user_id: int = Field(description="The ID of the user placing the order.")
-    items: List[Dict[str, Union[str, int, float]]] = Field(description="A list of dictionaries representing the order details. Each dictionary has the following keys: 'product_name' (str): The name of the product. 'quantity' (int): The quantity of the product. 'price' (float): The price of the product.")
+class ToRequestOrderConfirmation(BaseModel):
+    """Transfers work to a specialized assistant to request the user's approval for creating an order."""
+    product_list: str = Field(description="판매 중인 상품 목록")
+    customer_order_request: str = Field(description="고객의 주문 요청 사항")
+    message_to_be_confirmed: str = Field(description="고객의 주문 요청 내용에 대해 확인을 요청하는 메시지. 상품명과 상품 가격이 판매 중인 상품 목록과 일치해야 함.")
 
 
 class TodDsplayUserOrder(BaseModel):
@@ -498,8 +490,16 @@ class ToHowToChange(BaseModel):
     # change_order_instructions: str = Field(description="고객에게 선택한 기존 주문 내역을 어떻게 변경할지 묻는 메시지")
 
 
-class ToRequestConfirmation(BaseModel):
-    """Transfers work to a specialized assistant to request user's approval"""
-    product_list: str = Field(description="판매 중인 상품 목록")
-    customer_order_request: str = Field(description="고객의 주문 요청 사항")
-    message_to_be_confirmed: str = Field(description="고객의 주문 요청 내용에 대해 확인을 요청하는 메시지. 상품명과 상품 가격이 판매 중인 상품 목록과 일치해야 함.")
+class ToRequestOrderChangeConfirmation(BaseModel):
+    """Transfers work to a specialized assistant to request the user's approval for changing an order."""
+    selected_order : str = Field(description="고객이 선택한 기존 주문 내역")
+    customer_request: str = Field(description="고객의 요청 사항")
+    new_order : str = Field(description="고객의 요청 사항이 반영된 새로운 주문")
+    message_to_be_approved: str = Field(description="고객에게 내용 확인을 요청하는 메시지. 고객이 선택한 기존 주문 내역과 새로운 주문 모두 포함.")
+
+
+class ToRequestOrderCancelConfirmation(BaseModel):
+    """Transfers work to a specialized assistant to request the user's approval for canceling an order."""
+    selected_order : str = Field(description="고객이 선택한 기존 주문 내역")
+    customer_order_request: str = Field(description="고객의 요청 사항")
+    message_to_be_confirmed: str = Field(description="고객에게 내용 확인을 요청하는 메시지. 고객이 선택한 기존 주문 내역과 고객의 요청 사항을 모두 포함.")

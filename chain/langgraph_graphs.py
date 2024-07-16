@@ -44,10 +44,12 @@ from .langgraph_tools import (
     ToOrderChangeAssistant,
     ToOrderCancelAssistant,
 
-    ToRequestConfirmation,
+    ToRequestOrderConfirmation,
 
     ToHowToChange, 
     ToRequestOrderChangeConfirmation,
+
+    ToRequestOrderCancelConfirmation,
 )
 
 from .langgraph_utilities import create_entry_node, create_tool_node_with_fallback
@@ -211,7 +213,7 @@ def order_create_related_tools_route(state):
 
      if tool_name == "fetch_product_list":
          return "present_product_list"
-     elif tool_name == ToRequestConfirmation.__name__:
+     elif tool_name == ToRequestOrderConfirmation.__name__:
          return "request_order_confirmation"
 
 
@@ -454,7 +456,7 @@ def order_cancel_related_tools_route(state):
      
      if tool_name == "fetch_recent_order":
          return "display_user_order"
-     elif tool_name == ToRequestConfirmation.__name__:
+     elif tool_name == ToRequestOrderCancelConfirmation.__name__:
          return "request_order_cancel_confirmation"
      
 

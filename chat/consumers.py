@@ -88,27 +88,31 @@ class ChatConsumer(WebsocketConsumer):
 
         print("order_id: ", order_id)
         print("selected_order\n", selected_order)
+        # 브라우저에서 주문 아이디 선택한 경우
         if order_id:
-            orderbot_graph.update_state(config, {"order_id": order_id,
-                                                 "selected_order": selected_order,
-                                                 "orders": None})
+            orderbot_graph.update_state(config, {"orders": None})
+                                                 
             message = f"selected_order: {selected_order}"
+
+
+        # 사용자 확인 필요한 도구 사용 여부 확인 위한 플래그 변수
         self.confirm_message = text_data_json.get("confirmMessage")
         print("self.confirm_message: ", self.confirm_message)
         self.tool_call_id = text_data_json.get("toolCallId")
 
+        # 사용자 확인 필요한 도구 사용하지 않을 때의 출력
         if "confirmMessage" not in text_data_json:
             output = orderbot_graph.invoke({"messages": ("user", message),
                                             "user_info": user_id,
-                                            "selected_order": selected_order,},
-                                            # "order_id": order_id,
-                                            # "selected_order": selected_order}, 
+                                            },
                                             config)
             orders = output.get("orders")
         else:
+            # 사용자 확인 필요한 도구 사용할 때의 출력
             print("-"*70)
             print("승인 메시지 확인 구간 진입")
             if message == "y":
+                # 도구 사용 승인 했을 때의 출력
                 print("승인 메시지 확인")
                 output = orderbot_graph.invoke(
                     None,
@@ -116,6 +120,7 @@ class ChatConsumer(WebsocketConsumer):
                 )
                 print()
             else:
+                # 도구 사용 승인하지 않았을 때의 출력
                 output = orderbot_graph.invoke(
                     {
                         "messages": [
@@ -136,6 +141,7 @@ class ChatConsumer(WebsocketConsumer):
         snapshot = orderbot_graph.get_state(config)
         # print("snapshot\n", snapshot)
 
+        # 사용자 확인 필요한 도구 사용 경우
         if snapshot.next:
             print("-"*70)
             print("snapshot.next 존재")
@@ -153,18 +159,14 @@ class ChatConsumer(WebsocketConsumer):
              },
              ensure_ascii=False
              ))
+        # 사용자 확인 필요한 도구 사용하지 않는 경우
         else:
             print("snapshot.next 존재 X")
-            # self.send(text_data=json.dumps(
-            #         {"user": self.user.username,
-            #         "message": response,
-            #         "datetime": now.isoformat(),
-            #         },
-            #         ensure_ascii=False
-            #         ))
+            # 사용자 주문 내역이 조회된 경우
             if orders:
                 print("orders 존재 시 처리 구간 진입")
                 print("orders\n", orders)
+                # 주문 선택하지 않은 경우
                 if order_id is None:
                     response = "지난 주문 내역은 아래와 같습니다."
                 self.send(text_data=json.dumps(
@@ -433,4 +435,3 @@ class ChatConsumer(WebsocketConsumer):
                 "user": self.user.username,
                 "message": f"주문 취소 중 오류가 발생했습니다: {str(e)}",
             }))
-    
