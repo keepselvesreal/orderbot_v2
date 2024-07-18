@@ -9,9 +9,10 @@ from django.contrib.auth.models import User
 from decimal import Decimal
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from chain.langgraph_graphs import orderbot_graph
-from chain.langgraph_tools import fetch_product_list
+from chain.langgraph_tools import fetch_product_list, fetch_product_list2
 from products.models import Product, Order, OrderStatus
 
 thread_id = str(uuid.uuid4())
@@ -29,6 +30,7 @@ class ChatConsumer(WebsocketConsumer):
 
     def connect(self):
         self.user = self.scope["user"]
+        print("self.user: ", self.user)
         self.confirmation_message = None
         self.tool_call_id = None
         self.accept()
@@ -187,7 +189,7 @@ class ChatConsumer(WebsocketConsumer):
                     ))
                 
     def send_product_list(self, order_id=None):
-        products = fetch_product_list()
+        products = fetch_product_list2()
         if order_id:
             message = "주문을 어떻게 변경하실 건가요?\n아래 메뉴 목록에서 새로 주문해주세요."
         else:
@@ -435,3 +437,26 @@ class ChatConsumer(WebsocketConsumer):
                 "user": self.user.username,
                 "message": f"주문 취소 중 오류가 발생했습니다: {str(e)}",
             }))
+
+    def get_user_from_jwt(self):
+        try:
+            token = None
+            print("self.scope['headers']", self.scope['headers'])
+            if 'Authorization' in self.scope['headers']:
+                # 예시: Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
+                auth_header = self.scope['headers']['Authorization'][0].decode('utf-8')
+                print("auth_header: ", auth_header)
+                token = auth_header.split(' ')[1]  # 'Bearer <token>'에서 <token> 부분 추출
+            
+            if token:
+                authentication = JWTAuthentication()
+                validated_token = authentication.get_validated_token(token)
+                user = authentication.get_user(validated_token)
+                return user
+            else:
+                print("JWT 토큰이 없습니다.")
+                return None
+        except Exception as e:
+            print(f"JWT 인증 오류: {e}")
+            return None
+    

@@ -48,6 +48,41 @@ def lookup_policy(message: str):
     return temp_info
 
 
+# 도구로 만들 경우 인자 필요해서 임시로 따로 만듦
+# BaseTool.__call__() missing 1 required positional argument: 'tool_input'
+def fetch_product_list2():
+    """
+    Fetchs a list of products.
+    This function retrieves and displays a list of products. 
+    """
+
+    product_list = """
+    [
+        {
+            "product_name": "떡케익5호",
+            "quantity": 1,
+            "price": 54000
+        },
+        {
+            "product_name": "무지개 백설기 케익",
+            "quantity": 1,
+            "price": 51500
+        },
+        {
+            "product_name": "미니 백설기",
+            "quantity": 35,
+            "price": 31500
+        },
+        {
+            "product_name": "개별 모듬팩",
+            "quantity": 1,
+            "price": 13500
+        }
+    ]
+    """
+    return product_list
+
+
 @tool
 def fetch_product_list():
     """
