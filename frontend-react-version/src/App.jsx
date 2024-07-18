@@ -6,17 +6,18 @@ import Order from './Order';
 import { UserContext } from './UserContext';
 import useWebSocket from './useWebSocket';
 
-
 const App = () => {
-  const { isAuthenticated, setIsAuthenticated, userId } = useContext(UserContext);
+  const { isAuthenticated, refreshUser, logout, userId } = useContext(UserContext);
   const navigate = useNavigate();
   const { socketOpen, sendMessage, socket } = useWebSocket();
 
+  // 컴포넌트가 처음 마운트될 때 사용자 정보를 가져옴
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    logout();
     navigate('/login');
   };
 
@@ -42,6 +43,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 

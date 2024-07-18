@@ -6,11 +6,13 @@ const selectedProductsMap = {};
 
 const Chat = ({ socketOpen, sendMessage, socket }) => {
   const { user, userId } = useContext(UserContext);
-  console.log("user", user)
+  // console.log("user", user)
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
-  const [recentOrders, setRecentOrders] = useState([]);
+  const [currentConfirmMessage, setCurrentConfirmMessage] = useState(null);
+  const [currentToolCallId, setCurrentToolCallId] = useState(null);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   
   const chatRef = useRef(null);
 
@@ -24,9 +26,7 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
         if (data.message) {
           setMessages((prevMessages) => [...prevMessages, data]);
         }
-        if (data.recent_orders) {
-          setRecentOrders(data.recent_orders);
-        }
+        
         if (data.products) {
           displayProductList(data.products);
         }
@@ -39,6 +39,15 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
           const orderChangeType = data.order_change_type;
           displayFetchedOrders(data.changeable_orders, chatRef.current, orderChangeType);
         }
+        if (typeof data.confirm_message !== 'undefined' && data.confirm_message !== null) {
+          console.log("confirm_message 존재!", data.confirm_message)
+          console.log("confirm_message 존재!", data)
+          
+          setCurrentConfirmMessage(data.confirm_message);
+          setCurrentToolCallId(data.tool_call_id);
+        }
+
+        
       };
     }
   }, [socket]);
@@ -56,10 +65,28 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
         message,
         datetime: new Date().toISOString(),
       };
+      console.log("currentConfirmMessage, currentToolCallId", currentConfirmMessage, )
 
+      if (selectedOrderId) {
+        newMessage.orderId = selectedOrderId;
+      }
+      if (currentConfirmMessage) {
+        newMessage.confirmMessage = currentConfirmMessage;
+      }
+      if (currentToolCallId) {
+        newMessage.toolCallId = currentToolCallId;
+      }
+      
+      console.log("전송 데이터\n", newMessage);
       setMessages((prevMessages) => [...prevMessages, newMessage]);
       sendMessage(newMessage);
       setMessage('');
+
+      setCurrentConfirmMessage(null);
+      setCurrentToolCallId(null);
+      setSelectedOrderId(null); 
+      setSelectedOrder(null);
+      console.log("할당값 초기화\n", selectedOrderId, currentConfirmMessage, currentToolCallId);
     } else {
       console.error('Message cannot be empty.');
     }
@@ -181,6 +208,75 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
     }
   };
 
+  const handleOrderClick = (order) => {
+    if (selectedOrderId !== null) {
+      console.error('다른 주문을 선택할 수 없습니다.');
+      return;
+    }
+    setSelectedOrderId(order.id);
+    setSelectedOrder(order);
+
+    const data = {
+      orderDetails: order,
+      message: null,
+      userId: userId,
+      datetime: new Date().toISOString(),
+      orderId: order.id
+    };
+    socket.send(JSON.stringify(data));
+
+    const selectedOrderMessage = {
+      userId: 'system',
+      message: '선택한 주문',
+      datetime: new Date().toISOString(),
+      orderDetails: order
+    };
+    setMessages((prevMessages) => [...prevMessages, selectedOrderMessage]);
+
+  };
+
+
+  const renderRecentOrders = (recentOrders) => {
+    if (!recentOrders || recentOrders.length === 0) return null;
+    return (
+      <div className='recent-orders'>
+        <strong>주문 내역</strong>
+        <ul className='list-group'>
+          {recentOrders.map((order, index) => (
+            <li 
+              key={index} 
+              className={`list-group-item order-item ${selectedOrderId === order.id ? 'selected' : ''}`}
+              onClick={() => handleOrderClick(order)}
+            >
+              Order ID: {order.id}, Status: {order.order_status}, Created At: {order.created_at}
+              <br />
+              Items:
+              <ul>
+                {order.items.map((item, i) => (
+                  <li key={i}>{item.product_name} - Quantity: {item.quantity}, Price: {item.price}</li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
+  const renderOrderDetails = (order) => {
+    return (
+      <div className='selected-order'>
+        <strong>선택한 주문</strong>
+        <p>Order ID: {order.id}, Status: {order.order_status}, Created At: {order.created_at}</p>
+        <ul>
+          {order.items.map((item, i) => (
+            <li key={i}>{item.product_name} - Quantity: {item.quantity}, Price: {item.price}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
   const renderMessages = () => {
     return messages.map((msg, index) => {
       const isUserMessage = msg.userId === userId;
@@ -192,75 +288,12 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
           <strong>{name}</strong>
           <span className='date'>{datetime}</span><br />
           <span className='message-content'>{msg.message}</span>
+          {msg.recent_orders && renderRecentOrders(msg.recent_orders)}
+          {msg.orderDetails && renderOrderDetails(msg.orderDetails)}
         </div>
       );
     });
   };
-  
-
-  const fetchOrderDetails = (orderId) => {
-    const data = {
-      userId: userId,
-      message: 'fetch_order',
-      orderId: orderId,
-    };
-    socket.send(JSON.stringify(data));
-  };
-
-
-  const renderRecentOrders = () => {
-    if (recentOrders.length === 0) return null;
-    return (
-      <div className='message other'>
-        <strong>주문 내역</strong>
-        <br />
-        <ul className='list-group'>
-        {recentOrders.map((order, index) => (
-          <li
-            key={index}
-            className={`list-group-item order-item ${selectedOrderId === order.id ? 'selected' : ''}`} // 'selected' 클래스 조건부 추가
-            data-order-id={order.id}
-            onClick={() => handleRecentOrderClick(order)} // 주문 항목 클릭 시 `handleRecentOrderClick` 호출
-          >
-            <div>
-              Order ID: {order.id}, Status: {order.order_status}, Created At: {order.created_at}
-              <br />
-              Items:
-              <ul>
-                {order.items.map((item, i) => (
-                  <li key={i}>{item.product_name} - Quantity: {item.quantity}, Price: {item.price}</li>
-                ))}
-              </ul>
-            </div>
-          </li>
-        ))}
-        </ul>
-      </div>
-    );
-  };
-
-  const handleRecentOrderClick = (order) => {
-  if (selectedOrderId !== null) {
-    console.error('다른 주문을 선택할 수 없습니다.');
-    return;
-  }
-  setSelectedOrderId(order.id);
-
-  const orderItem = document.querySelector(`.order-item[data-order-id="${order.id}"]`);
-  if (orderItem) {
-    orderItem.classList.add('selected'); // 배경색을 변경하기 위해 'selected' 클래스 추가
-  }
-  fetchOrderDetails(order.id);
-
-  const data = {
-      orderDetails: order,
-      message: null,
-      userId: userId,
-      datetime: new Date().toISOString(),
-      orderId: order.id
-    };
-    socket.send(JSON.stringify(data));
-};
   
 
   const displayFetchedOrders = (orders, chatElement, orderChangeType) => {
@@ -329,7 +362,7 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
     <div>
       <div id="chat" className="border p-3 mb-3" style={{ height: '500px', overflowY: 'auto' }} ref={chatRef}>
         {renderMessages()}
-        {renderRecentOrders()}
+   
       </div>
       <form id="chat-input" className="input-group mb-3" onSubmit={handleSubmit}>
         <input

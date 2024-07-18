@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import axios from 'axios';
+import { UserContext } from './UserContext';
 
-const Logout = ({ setLoggedIn }) => {
+const Logout = () => {
+  const { logout } = useContext(UserContext);
+
   const handleLogout = async () => {
     try {
       await axios.post('http://localhost:8000/api/logout/');
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      setLoggedIn(false);
+      logout();
     } catch (error) {
       console.error('Logout error:', error);
     }

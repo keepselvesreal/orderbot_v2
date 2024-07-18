@@ -4,7 +4,7 @@ import { UserContext } from './UserContext';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-  const { setIsAuthenticated, setUser, setUserId } = useContext(UserContext);
+  const { login, refreshUser } = useContext(UserContext);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -13,19 +13,12 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:8000/api/token/', {
-        username: username,
-        password: password
-      });
-      localStorage.setItem('accessToken', response.data.access);
-      localStorage.setItem('refreshToken', response.data.refresh);
-      setIsAuthenticated(true);
-      setUser(response.data);
-      setUserId(response.data.user_id);
+      await login(username, password);
+      await refreshUser(); // 로그인 후 사용자 정보 갱신
 
-      navigate('/');
+      navigate('/'); // 로그인 후 리다이렉트할 경로
     } catch (error) {
-      console.error('Login error:', error);  // Log detailed error
+      console.error('Login error:', error);
       setError('Invalid username or password');
     }
   };

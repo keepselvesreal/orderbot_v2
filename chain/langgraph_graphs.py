@@ -359,7 +359,7 @@ def display_user_order(state: State):
     print("="*70)
     print("recent_orders\n", recent_orders)
     output = ask_order_runnable.invoke({"messages": messages,
-                                        "orders": orders})
+                                        "orders": recent_orders})
     response = output.content
     print("response\n", response)
 
