@@ -30,7 +30,15 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
         }
         
         if (data.products) {
-          const productsMessage = createProductListMessage(data.products);
+          console.log("products 필드 포함된 경우의 data", data)
+          let orderId = null;
+          if (data.order_id) {
+            orderId = data.order_id
+          }
+          else {
+              orderId = null
+          }
+          const productsMessage = createProductListMessage(data.products, orderId);
           setMessages((prevMessages) => [...prevMessages, productsMessage]);
         }
         if (data.fetched_orders) {
@@ -182,6 +190,7 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
             orderId: orderId || null,
         };
 
+        console.log("Sending data:", data);
 
         socket.send(JSON.stringify(data));
 
@@ -268,7 +277,48 @@ const renderProductList = (products, containerId, orderId) => {
   };
 
 
-  
+  const renderRecentOrders = (recentOrders) => {
+    if (!recentOrders || recentOrders.length === 0) return null;
+    return (
+      <div className='recent-orders'>
+        <strong>주문 내역</strong>
+        <ul className='list-group'>
+          {recentOrders.map((order, index) => (
+            <li 
+              key={index} 
+              className={`list-group-item order-item ${selectedOrderId === order.id ? 'selected' : ''}`}
+              onClick={() => handleOrderClick(order)}
+            >
+              Order ID: {order.id}, Status: {order.order_status}, Created At: {order.created_at}
+              <br />
+              Items:
+              <ul>
+                {order.items.map((item, i) => (
+                  <li key={i}>{item.product_name} - Quantity: {item.quantity}, Price: {item.price}</li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
+
+  const renderOrderDetails = (order) => {
+    return (
+      <div className='selected-order'>
+        <strong>선택한 주문</strong>
+        <p>Order ID: {order.id}, Status: {order.order_status}, Created At: {order.created_at}</p>
+        <ul>
+          {order.items.map((item, i) => (
+            <li key={i}>{item.product_name} - Quantity: {item.quantity}, Price: {item.price}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
 
   const renderMessages = () => {
     return messages.map((msg, index) => {
@@ -290,10 +340,12 @@ const renderProductList = (products, containerId, orderId) => {
 
       return (
         <div key={index} className={`message ${isUserMessage ? 'me' : 'other'}`}>
-          <strong>{name}</strong>
-          <span className='date'>{datetime}</span><br />
-          {content}
-        </div>
+        <strong>{name}</strong>
+        <span className='date'>{datetime}</span><br />
+        {content}
+        {msg.recent_orders && renderRecentOrders(msg.recent_orders)}
+        {msg.orderDetails && renderOrderDetails(msg.orderDetails)}
+      </div>
       );
     });
   };
