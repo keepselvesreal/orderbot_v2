@@ -14,6 +14,7 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   
+  
   const chatRef = useRef(null);
 
   useEffect(() => {
@@ -23,34 +24,54 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
         if (!data.datetime) {
           data.datetime = new Date().toISOString();
         }
+        
         if (data.message) {
           setMessages((prevMessages) => [...prevMessages, data]);
         }
         
         if (data.products) {
-          displayProductList(data.products);
+          const productsMessage = createProductListMessage(data.products);
+          setMessages((prevMessages) => [...prevMessages, productsMessage]);
         }
         if (data.fetched_orders) {
-          console.log("data.fetched_orders: ", data.fetched_orders);
-          displayFetchedOrders(data.fetched_orders, chatRef.current);
+          const ordersMessage = createOrdersMessage(data.fetched_orders);
+          setMessages((prevMessages) => [...prevMessages, ordersMessage]);
         }
         if (data.changeable_orders) {
-          console.log("data.changeable_orders: ", data.changeable_orders);
-          const orderChangeType = data.order_change_type;
-          displayFetchedOrders(data.changeable_orders, chatRef.current, orderChangeType);
+          const changeableOrdersMessage = createOrdersMessage(data.changeable_orders, data.order_change_type);
+          setMessages((prevMessages) => [...prevMessages, changeableOrdersMessage]);
         }
         if (typeof data.confirm_message !== 'undefined' && data.confirm_message !== null) {
-          console.log("confirm_message 존재!", data.confirm_message)
-          console.log("confirm_message 존재!", data)
-          
           setCurrentConfirmMessage(data.confirm_message);
           setCurrentToolCallId(data.tool_call_id);
         }
-
-        
       };
     }
   }, [socket]);
+
+  const createProductListMessage = (products, orderId = null) => {
+    const uniqueContainerId = `selected-products-container-${Date.now()}`;
+    selectedProductsMap[uniqueContainerId] = {};
+
+    return {
+      type: 'products',
+      content: products,
+      datetime: new Date().toISOString(),
+      userId: 'system',
+      containerId: uniqueContainerId,
+      orderId: orderId
+    };
+  };
+
+  const createOrdersMessage = (orders, orderChangeType = null) => {
+    return {
+      type: 'orders',
+      content: orders,
+      datetime: new Date().toISOString(),
+      userId: 'system',
+      orderChangeType: orderChangeType
+    };
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -98,46 +119,8 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
     }
   }, [messages]);
 
-  const displayProductList = (products, orderId = null) => {
-    const uniqueContainerId = `selected-products-container-${Date.now()}`;
-    selectedProductsMap[uniqueContainerId] = {};
 
-    const productListHtml = `
-      <div class="message other">
-        <strong>메뉴 목록</strong><br>
-        <ul class="list-group">
-          ${products.map((product, index) => `
-            <li class="list-group-item">
-              <div class="d-flex justify-content-between align-items-center">
-                <span><strong>${product.product_name}</strong> - ${product.price}원</span>
-                <input type="number" id="product-quantity-${uniqueContainerId}-${index}" class="form-control product-quantity" style="width: 70px;" min="1" value="1" data-product-id="${index}">
-                <button class="btn btn-primary btn-sm select-button" data-product-id="${index}" data-product-name="${product.product_name}" data-product-price="${product.price}">선택</button>
-              </div>
-            </li>`).join('')}
-        </ul>
-      </div>
-      <div id="${uniqueContainerId}">
-        <h5>선택된 상품</h5>
-        <ul id="selected-products-list-${uniqueContainerId}" class="list-group"></ul>
-        <h5>총 주문 금액: <span id="total-order-amount-${uniqueContainerId}">0</span>원</h5>
-        <button id="confirm-order-btn-${uniqueContainerId}" class="btn btn-success">주문</button>
-      </div>`;
 
-    const chatElement = document.getElementById('chat');
-    chatElement.insertAdjacentHTML('beforeend', productListHtml);
-
-    document.querySelectorAll('.select-button').forEach(button => {
-      button.addEventListener('click', (event) => {
-        handleSelectButtonClick(event, uniqueContainerId);
-      });
-    });
-
-    document.getElementById(`confirm-order-btn-${uniqueContainerId}`).addEventListener('click', () => {
-      handleConfirmOrderButtonClick(uniqueContainerId, orderId);
-    });
-
-    chatElement.scrollTop = chatElement.scrollHeight;
-  };
 
   const handleSelectButtonClick = (event, containerId) => {
     const button = event.target;
@@ -153,60 +136,109 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
     const isSelected = button.classList.contains('btn-success');
 
     if (isSelected) {
-      button.classList.remove('btn-success');
-      button.classList.add('btn-primary');
-      button.textContent = '선택';
+        button.classList.remove('btn-success');
+        button.classList.add('btn-primary');
+        button.textContent = '선택';
 
-      const selectedProductItem = document.querySelector(`.selected-product[data-product-id="${productId}"]`);
-      if (selectedProductItem) {
-        totalOrderAmount -= selectedProductsMap[containerId][productId].productPrice * selectedProductsMap[containerId][productId].quantity;
-        selectedProductItem.remove();
-        delete selectedProductsMap[containerId][productId];
-      }
+        const selectedProductItem = document.querySelector(`.selected-product[data-product-id="${productId}"]`);
+        if (selectedProductItem) {
+            totalOrderAmount -= selectedProductsMap[containerId][productId].productPrice * selectedProductsMap[containerId][productId].quantity;
+            selectedProductItem.remove();
+            delete selectedProductsMap[containerId][productId];
+        }
     } else {
-      button.classList.remove('btn-primary');
-      button.classList.add('btn-success');
-      button.textContent = '선택됨';
+        button.classList.remove('btn-primary');
+        button.classList.add('btn-success');
+        button.textContent = '선택됨';
 
-      selectedProductsMap[containerId][productId] = { productName, productPrice, quantity };
-      totalOrderAmount += productPrice * quantity;
+        selectedProductsMap[containerId][productId] = { productName, productPrice, quantity };
+        totalOrderAmount += productPrice * quantity;
 
-      const selectedItem = document.createElement('li');
-      selectedItem.classList.add('selected-product', 'list-group-item');
-      selectedItem.setAttribute('data-product-id', productId);
-      selectedItem.innerHTML = `${productName} - ${productPrice}원 x ${quantity} = ${productPrice * quantity}원`;
-      selectedProductsList.appendChild(selectedItem);
+        const selectedItem = document.createElement('li');
+        selectedItem.classList.add('selected-product', 'list-group-item');
+        selectedItem.setAttribute('data-product-id', productId);
+        selectedItem.innerHTML = `${productName} - ${productPrice}원 x ${quantity} = ${productPrice * quantity}원`;
+        selectedProductsList.appendChild(selectedItem);
     }
 
     totalAmountElement.textContent = totalOrderAmount;
   };
 
-
   const handleConfirmOrderButtonClick = (containerId, orderId) => {
+    console.log("handleConfirmOrderButtonClick")
+    console.log("orderId: ", orderId)
     const orderedProducts = Object.values(selectedProductsMap[containerId]).map(product => ({
-      productName: product.productName,
-      productPrice: product.productPrice,
-      quantity: product.quantity,
+        productName: product.productName,
+        productPrice: product.productPrice,
+        quantity: product.quantity,
     }));
 
     if (orderedProducts.length > 0) {
-      const data = {
-        userId: userId,
-        orderedProducts: orderedProducts,
-        datetime: new Date().toISOString(),
-        message: orderId ? 'change_order' : 'create_order',
-        orderId: orderId || null,
-      };
+        const data = {
+            userId: userId,
+            orderedProducts: orderedProducts,
+            datetime: new Date().toISOString(),
+            message: orderId ? 'change_order' : 'create_order',
+            orderId: orderId || null,
+        };
 
-      socket.send(JSON.stringify(data));
 
-      const confirmOrderButton = document.getElementById(`confirm-order-btn-${containerId}`);
-      confirmOrderButton.textContent = '주문 완료';
-      confirmOrderButton.classList.remove('btn-success');
-      confirmOrderButton.classList.add('btn-secondary');
-      confirmOrderButton.disabled = true;
+        socket.send(JSON.stringify(data));
+
+        const confirmOrderButton = document.getElementById(`confirm-order-btn-${containerId}`);
+        confirmOrderButton.textContent = '주문 완료';
+        confirmOrderButton.classList.remove('btn-success');
+        confirmOrderButton.classList.add('btn-secondary');
+        confirmOrderButton.disabled = true;
     }
   };
+
+const renderProductList = (products, containerId, orderId) => {
+    return (
+        <div className="message other">
+            <strong>메뉴 목록</strong><br />
+            <ul className="list-group">
+                {products.map((product, index) => (
+                    <li className="list-group-item" key={index}>
+                        <div className="d-flex justify-content-between align-items-center">
+                            <span><strong>{product.product_name}</strong> - {product.price}원</span>
+                            <input
+                                type="number"
+                                id={`product-quantity-${containerId}-${index}`}
+                                className="form-control product-quantity"
+                                style={{ width: '70px' }}
+                                min="1"
+                                defaultValue="1"
+                                data-product-id={index}
+                            />
+                            <button
+                                className="btn btn-primary btn-sm select-button"
+                                data-product-id={index}
+                                data-product-name={product.product_name}
+                                data-product-price={product.price}
+                                onClick={(event) => handleSelectButtonClick(event, containerId)}
+                            >
+                                선택
+                            </button>
+                        </div>
+                    </li>
+                ))}
+            </ul>
+            <div id={containerId}>
+                <h5>선택된 상품</h5>
+                <ul id={`selected-products-list-${containerId}`} className="list-group"></ul>
+                <h5>총 주문 금액: <span id={`total-order-amount-${containerId}`}>0</span>원</h5>
+                <button
+                    id={`confirm-order-btn-${containerId}`}
+                    className="btn btn-success"
+                    onClick={() => handleConfirmOrderButtonClick(containerId, orderId)}
+                >
+                    주문
+                </button>
+            </div>
+        </div>
+    );
+};
 
   const handleOrderClick = (order) => {
     if (selectedOrderId !== null) {
@@ -236,46 +268,7 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
   };
 
 
-  const renderRecentOrders = (recentOrders) => {
-    if (!recentOrders || recentOrders.length === 0) return null;
-    return (
-      <div className='recent-orders'>
-        <strong>주문 내역</strong>
-        <ul className='list-group'>
-          {recentOrders.map((order, index) => (
-            <li 
-              key={index} 
-              className={`list-group-item order-item ${selectedOrderId === order.id ? 'selected' : ''}`}
-              onClick={() => handleOrderClick(order)}
-            >
-              Order ID: {order.id}, Status: {order.order_status}, Created At: {order.created_at}
-              <br />
-              Items:
-              <ul>
-                {order.items.map((item, i) => (
-                  <li key={i}>{item.product_name} - Quantity: {item.quantity}, Price: {item.price}</li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  };
-
-  const renderOrderDetails = (order) => {
-    return (
-      <div className='selected-order'>
-        <strong>선택한 주문</strong>
-        <p>Order ID: {order.id}, Status: {order.order_status}, Created At: {order.created_at}</p>
-        <ul>
-          {order.items.map((item, i) => (
-            <li key={i}>{item.product_name} - Quantity: {item.quantity}, Price: {item.price}</li>
-          ))}
-        </ul>
-      </div>
-    );
-  };
+  
 
   const renderMessages = () => {
     return messages.map((msg, index) => {
@@ -283,80 +276,82 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
       const name = isUserMessage ? user.username || userId : '주문봇';
       const datetime = new Date(msg.datetime).toLocaleString("ko-KR", { hour: "numeric", minute: "numeric", hour12: true });
 
+      let content;
+      switch (msg.type) {
+        case 'products':
+          content = renderProductList(msg.content, msg.containerId, msg.orderId);
+          break;
+        case 'orders':
+          content = renderOrders(msg.content, msg.orderChangeType);
+          break;
+        default:
+          content = <span className='message-content'>{msg.message}</span>;
+      }
+
       return (
         <div key={index} className={`message ${isUserMessage ? 'me' : 'other'}`}>
           <strong>{name}</strong>
           <span className='date'>{datetime}</span><br />
-          <span className='message-content'>{msg.message}</span>
-          {msg.recent_orders && renderRecentOrders(msg.recent_orders)}
-          {msg.orderDetails && renderOrderDetails(msg.orderDetails)}
+          {content}
         </div>
       );
     });
   };
+
+  const renderOrders = (orders, orderChangeType) => {
+    return (
+      <div>
+        <strong>주문 목록</strong>
+        <ul className="list-group">
+          {orders.map((order, index) => (
+            <li key={index} className="list-group-item">
+              <strong>주문 {index + 1}</strong><br />
+              주문 번호: {order.id}<br />
+              주문 상태: {getStatusText(order.order_status)}<br />
+              생성일시: {new Date(order.created_at).toLocaleString('ko-KR')}<br />
+              최근 업데이트: {new Date(order.updated_at).toLocaleString('ko-KR')}<br />
+              <strong>주문 상품 목록:</strong><br />
+              <ul>
+                {order.items.map((item, idx) => (
+                  <li key={idx}>상품 이름: {item.product_name}, 수량: {item.quantity}, 가격: {item.price}원</li>
+                ))}
+              </ul>
+              {orderChangeType && (
+                <button
+                  className="btn btn-danger mt-2"
+                  onClick={() => handleOrderChange(order.id, orderChangeType)}
+                >
+                  {orderChangeType === "order_changed" ? '주문 변경' : '주문 취소'}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'order_canceled': return '주문 취소됨';
+      case 'payment_completed': return '결제 완료';
+      case '주문 변경': return '주문 변경';
+      case 'order': return '주문 완료';
+      default: return status;
+    }
+  };
+
+  const handleOrderChange = (orderId, changeType) => {
+    const message = {
+      message: changeType,
+      userId: userId,
+      orderId: orderId
+    };
+    socket.send(JSON.stringify(message));
+  };
   
 
-  const displayFetchedOrders = (orders, chatElement, orderChangeType) => {
-    const ordersList = document.createElement('ul');
-    ordersList.classList.add('list-group');
-
-    orders.forEach((order, index) => {
-      const orderItem = document.createElement('li');
-      orderItem.classList.add('list-group-item');
-
-      let statusText = order.order_status;
-      if (statusText === 'order_canceled') {
-        statusText = '주문 취소됨';
-      } else if (statusText === 'payment_completed') {
-        statusText = '결제 완료';
-      } else if (statusText === '주문 변경') {
-        statusText = '주문 변경';
-      } else if (statusText === 'order') {
-        statusText = '주문 완료';
-      }
-
-      orderItem.innerHTML = `
-        <strong>주문 ${index + 1}</strong><br>
-        주문 번호: ${order.id}<br>
-        주문 상태: ${statusText}<br>
-        생성일시: ${new Date(order.created_at).toLocaleString('ko-KR')}<br>
-        최근 업데이트: ${new Date(order.updated_at).toLocaleString('ko-KR')}<br>
-        <strong>주문 상품 목록:</strong><br>
-        <ul>
-          ${order.items.map((item, idx) => `
-            <li>상품 이름: ${item.product_name}, 수량: ${item.quantity}, 가격: ${item.price}원</li>
-          `).join('')}
-        </ul>
-      `;
-
-      if (orderChangeType) {
-        const changeOrderButton = document.createElement('button');
-        changeOrderButton.classList.add('btn', 'btn-danger', 'mt-2');
-        changeOrderButton.textContent = orderChangeType === "order_changed" ? '주문 변경' : '주문 취소';
-
-        changeOrderButton.addEventListener('click', () => {
-          const message = {
-            message: orderChangeType,
-            userId: userId,
-            orderId: order.id
-          };
-          socket.send(JSON.stringify(message));
-        });
-
-        orderItem.appendChild(changeOrderButton);
-      }
-
-      ordersList.appendChild(orderItem);
-    });
-
-    const orderMessageDiv = document.createElement('div');
-    orderMessageDiv.classList.add('message', 'other');
-    orderMessageDiv.innerHTML = `<strong>주문 목록</strong><br>`;
-    orderMessageDiv.appendChild(ordersList);
-
-    chatElement.appendChild(orderMessageDiv);
-    chatElement.scrollTop = chatElement.scrollHeight;
-  };
+  
 
   return (
     <div>
