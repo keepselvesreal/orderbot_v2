@@ -7,7 +7,6 @@ const UserProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [userId, setUserId] = useState(null);
- 
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
