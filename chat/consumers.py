@@ -108,7 +108,7 @@ class ChatConsumer(WebsocketConsumer):
                                             "user_info": user_id,
                                             },
                                             config)
-            orders = output.get("orders")
+            order_history = output.get("orders")
         else:
             # 사용자 확인 필요한 도구 사용할 때의 출력
             print("-"*70)
@@ -165,17 +165,17 @@ class ChatConsumer(WebsocketConsumer):
         else:
             print("snapshot.next 존재 X")
             # 사용자 주문 내역이 조회된 경우
-            if orders:
-                print("orders 존재 시 처리 구간 진입")
-                print("orders\n", orders)
-                # 주문 선택하지 않은 경우
+            if order_history:
+                print("order_history 존재 시 처리 구간 진입")
+                print("order_history\n", order_history)
+                # 주문 선택하지 않은 경우. 반면 order_id 있다면 특정 주문 선택한 경우이고, 이때 response는 이를 바탕으로 어떤 처리 진행하고 model이 응답 생성한 경우.
                 if order_id is None:
                     response = "지난 주문 내역은 아래와 같습니다."
                 self.send(text_data=json.dumps(
                     {"user": self.user.username,
                     "message": response,
                     "datetime": now.isoformat(),
-                    "recent_orders": orders, 
+                    "recent_orders": order_history, 
                     },
                 ensure_ascii=False
                 ))

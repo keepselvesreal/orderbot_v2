@@ -1,14 +1,22 @@
-import React, { useState, useEffect } from 'react';
-const Order = ({ socketOpen, sendMessage, userId }) => {
+import React, { useState, useEffect, useContext } from 'react';
+import { UserContext } from './UserContext';
+import { useWebSocket } from './useWebSocket';
+
+
+const Order = () => {
+  const { userId } = useContext(UserContext);
+  const { sendMessage } = useWebSocket();
   const [showOrderSubButtons, setShowOrderSubButtons] = useState(false);
   const [showOrderQuerySubButtons, setShowOrderQuerySubButtons] = useState(false);
   const [showChangeOrderSubButtons, setShowChangeOrderSubButtons] = useState(false);
   const [showCancelOrderSubButtons, setShowCancelOrderSubButtons] = useState(false);
 
+
   const toggleOrderSubButtons = () => setShowOrderSubButtons(!showOrderSubButtons);
   const toggleOrderQuerySubButtons = () => setShowOrderQuerySubButtons(!showOrderQuerySubButtons);
   const toggleChangeOrderSubButtons = () => setShowChangeOrderSubButtons(!showChangeOrderSubButtons);
   const toggleCancelOrderSubButtons = () => setShowCancelOrderSubButtons(!showCancelOrderSubButtons);
+
 
   const showProductList = () => {
     sendMessage({
@@ -17,6 +25,7 @@ const Order = ({ socketOpen, sendMessage, userId }) => {
       datetime: new Date().toISOString()
     });
   };
+
 
   const fetchOrders = (orderType, startDate, endDate) => {
     const message = orderType === 'all' ? 'get_all_orders' : 'get_order_by_status';
@@ -28,6 +37,7 @@ const Order = ({ socketOpen, sendMessage, userId }) => {
       endDate: endDate
     });
   };
+
 
   const handleOrderChangeOrCancel = (orderChangeType) => {
     const startDateElement = document.getElementById(`${orderChangeType}-start-date`);
@@ -55,10 +65,12 @@ const Order = ({ socketOpen, sendMessage, userId }) => {
     });
   };
 
+
   useEffect(() => {
     handleOrderChangeOrCancel('change');
     handleOrderChangeOrCancel('cancel');
   }, []);
+
 
   return (
     <div>

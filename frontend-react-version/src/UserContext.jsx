@@ -8,6 +8,7 @@ const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userId, setUserId] = useState(null);
 
+
   const fetchCurrentUser = useCallback(async () => {
     const token = localStorage.getItem('accessToken');
     if (!token) {
@@ -49,9 +50,11 @@ const UserProvider = ({ children }) => {
     }
   }, [isAuthenticated, userId]);
 
+
   useEffect(() => {
     fetchCurrentUser();
   }, [fetchCurrentUser]);
+
 
   const login = async (username, password) => {
     try {
@@ -72,12 +75,14 @@ const UserProvider = ({ children }) => {
     }
   };
 
+
   const logout = () => {
     localStorage.removeItem('accessToken');
     setIsAuthenticated(false);
     setUser(null);
     setUserId(null);
   };
+
 
   const refreshUser = useCallback(async () => {
     try {
@@ -114,6 +119,7 @@ const UserProvider = ({ children }) => {
       console.error('Error refreshing current user:', error);
     }
   }, []);
+  
 
   return (
     <UserContext.Provider value={{ isAuthenticated, user, userId, login, logout, refreshUser }}>

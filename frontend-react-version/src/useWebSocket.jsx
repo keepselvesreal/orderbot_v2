@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef, useContext } from 'react';
+import { useState, useEffect, useRef, useContext, createContext } from 'react';
 import { UserContext } from './UserContext';
 
-const useWebSocket = () => {
+const WebSocketContext = createContext(null);
+
+export const WebSocketProvider = ({ children }) => {
   const { userId } = useContext(UserContext);
   const [socketOpen, setSocketOpen] = useState(false);
   const socketRef = useRef(null);
@@ -39,7 +41,14 @@ const useWebSocket = () => {
     }
   };
 
-  return { socketOpen, sendMessage, socket: socketRef.current };
+  return (
+    <WebSocketContext.Provider value={{ socket: socketRef.current, socketOpen, sendMessage }}>
+      {children}
+    </WebSocketContext.Provider>
+  );
 };
 
-export default useWebSocket;
+export const useWebSocket = () => {
+  return useContext(WebSocketContext);
+};
+
