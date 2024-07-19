@@ -49,6 +49,13 @@ def process_message(instance, message, data_from_client):
     return False
 
 
+def execute_compiled_graph(compiled_graph, config, **kwargs):
+    if kwargs == {}:
+        kwargs = None
+    output = compiled_graph.invoke(kwargs, config)
+    return output
+    
+
 def dict_to_json(**kwargs):
     dict_data = kwargs
     json_data = json.dumps(dict_data, ensure_ascii=False)
