@@ -73,9 +73,10 @@ const Chat = () => {
 
     if (message.trim()) {
       const newMessage = {
-        userId: userId || 'Anonymous',
+        sender: user || 'Anonymous',
+        userId: userId,
         message,
-        datetime: new Date().toISOString(),
+        datetime: new Date().toISOString()
       };
       console.log("currentConfirmMessage, currentToolCallId", currentConfirmMessage, )
 
@@ -144,18 +145,16 @@ const Chat = () => {
     setSelectedOrder(order);
 
     const data = {
-      orderDetails: order,
+      sender: 'system',
       message: null,
-      userId: userId,
-      datetime: new Date().toISOString(),
-      orderId: order.id
+      orderId: order.id,
+      orderDetails: order
     };
     socket.send(JSON.stringify(data));
 
     const selectedOrderMessage = {
-      userId: 'system',
+      sender: 'system',
       message: '선택한 주문',
-      datetime: new Date().toISOString(),
       orderDetails: order
     };
     setMessages((prevMessages) => [...prevMessages, selectedOrderMessage]);
@@ -191,11 +190,10 @@ const createProductListMessage = (products, orderId = null) => {
 
   return {
     type: 'products',
+    sender: 'system',
     content: products,
-    datetime: new Date().toISOString(),
-    userId: 'system',
-    containerId: uniqueContainerId,
-    orderId: orderId
+    orderId: orderId,
+    containerId: uniqueContainerId
   };
 };
 
@@ -256,11 +254,11 @@ const handleConfirmOrderButtonClick = (containerId, orderId) => {
 
   if (orderedProducts.length > 0) {
       const data = {
+          sender: 'system',
           userId: userId,
-          orderedProducts: orderedProducts,
-          datetime: new Date().toISOString(),
           message: orderId ? 'change_order' : 'create_order',
           orderId: orderId || null,
+          orderedProducts: orderedProducts
       };
 
       console.log("Sending data:", data);
@@ -329,9 +327,8 @@ const renderProductList = (products, containerId, orderId) => {
   const createOrdersMessage = (orders, orderChangeType = null) => {
     return {
       type: 'orders',
+      sender: 'system',
       content: orders,
-      datetime: new Date().toISOString(),
-      userId: 'system',
       orderChangeType: orderChangeType
     };
   };
@@ -385,8 +382,8 @@ const renderProductList = (products, containerId, orderId) => {
 
   const handleOrderChange = (orderId, changeType) => {
     const message = {
+      sender: "system",
       message: changeType,
-      userId: userId,
       orderId: orderId
     };
     socket.send(JSON.stringify(message));
@@ -396,8 +393,8 @@ const renderProductList = (products, containerId, orderId) => {
   // 채팅창에 메시지를 표시
   const renderMessages = () => {
     return messages.map((msg, index) => {
-      const isUserMessage = msg.userId === userId;
-      const name = isUserMessage ? user.username || userId : '주문봇';
+      const isUserMessage = msg.sender === user;
+      const name = isUserMessage ? user.username : '주문봇';
       const datetime = new Date(msg.datetime).toLocaleString("ko-KR", { hour: "numeric", minute: "numeric", hour12: true });
 
       let content;
