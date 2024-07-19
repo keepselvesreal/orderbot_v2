@@ -113,9 +113,9 @@ const Chat = ({ socketOpen, sendMessage, socket }) => {
 
       setCurrentConfirmMessage(null);
       setCurrentToolCallId(null);
-      setSelectedOrderId(null); 
-      setSelectedOrder(null);
-      console.log("할당값 초기화\n", selectedOrderId, currentConfirmMessage, currentToolCallId);
+      
+      // 상태가 초기화된 후 콘솔 로그
+      console.log("할당값 초기화 후\n", selectedOrderId, currentConfirmMessage, currentToolCallId);
     } else {
       console.error('Message cannot be empty.');
     }
@@ -274,6 +274,11 @@ const renderProductList = (products, containerId, orderId) => {
     };
     setMessages((prevMessages) => [...prevMessages, selectedOrderMessage]);
 
+    // 주문 선택 후 orderId 초기화
+  setTimeout(() => {
+    setSelectedOrderId(null);
+    setSelectedOrder(null);
+  }, 0);
   };
 
 
