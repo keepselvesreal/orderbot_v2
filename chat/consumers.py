@@ -14,6 +14,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from chain.langgraph_graphs import orderbot_graph
 from chain.langgraph_tools import fetch_product_list, fetch_product_list2
 from products.models import Product, Order, OrderStatus
+from .utilities import process_message, dict_to_json
 
 thread_id = str(uuid.uuid4())
 config = {
@@ -43,72 +44,83 @@ class ChatConsumer(WebsocketConsumer):
         print("receive 진입")
         print("클라이언트가 보낸 데이터\n", text_data)
 
-        text_data_json = json.loads(text_data)
-        message = text_data_json["message"]
-        user_id = text_data_json["userId"]
-        order_id = text_data_json.get("orderId")
-        orders = text_data_json.get("orders")
-        selected_order = text_data_json.get("orderDetails")
-        ordered_products = text_data_json.get("orderedProducts")
-        start_date = text_data_json.get("startDate")
-        start_date = self.parse_date(start_date) if start_date else None
-        end_date = text_data_json.get("endDate")
-        print("start_date, end_date: ", start_date, end_date)
-        end_date = self.parse_date(end_date) if end_date else None
-        order_status = text_data_json.get("orderStatus")
+        # text_data_json = json.loads(text_data)
+        data_from_client = json.loads(text_data)
+        print("data from client\n", data_from_client)
+        message = data_from_client["message"]
+        selected_order_id = data_from_client.get("orderId")
+        selected_order = data_from_client.get("orderDetails")
+        has_confirmation = data_from_client.get("confirmMessage")
+        tool_call_id = data_from_client.get("toolCallId")
+        user_id = data_from_client.get("userId") # 임시로
+        # message = text_data_json["message"]
+        # user_id = text_data_json["userId"]
+        # order_id = text_data_json.get("orderId")
+        # orders = text_data_json.get("orders")
+        # selected_order = text_data_json.get("orderDetails")
+        # ordered_products = text_data_json.get("orderedProducts")
+        # start_date = text_data_json.get("startDate")
+        # start_date = self.parse_date(start_date) if start_date else None
+        # end_date = text_data_json.get("endDate")
+        # print("start_date, end_date: ", start_date, end_date)
+        # end_date = self.parse_date(end_date) if end_date else None
+        # order_status = text_data_json.get("orderStatus")
         # datetime = text_data_json.get("datetime") # 사용자 주문 요청 시간이 아닌 db에서 주문 생성 시 시간을 주문 시간으로 간주.
         
-        if message == "show_products":
-            self.send_product_list()
-            return # 통신 종료
-        elif message == "get_all_orders":
-            self.get_all_orders(start_date, end_date)
-            return
-        elif message == "get_order_by_status":
-            self.get_order_by_status(order_status, start_date, end_date)
-            return 
-        elif message == "create_order":
-            self.create_order(user_id, ordered_products)
-            return
-        elif message == "order_to_change":
-            order_change_type = "order_changed"
-            self.get_changeable_orders(order_change_type, start_date, end_date)
-            return 
-        elif message == "order_changed":
-            self.send_product_list(order_id)
-            return
-        elif message == "change_order":
-            self.change_order(order_id, ordered_products)
-            return 
-        elif message == "order_to_cancel":
-            order_change_type = "order_canceled"
-            self.get_changeable_orders(order_change_type, start_date, end_date)
-            return
-        elif message == "order_canceled":
-            self.cancel_order(order_id)
-            return 
+        # if message == "show_products":
+        #     self.send_product_list()
+        #     return # 통신 종료
+        # elif message == "get_all_orders":
+        #     self.get_all_orders(start_date, end_date)
+        #     return
+        # elif message == "get_order_by_status":
+        #     self.get_order_by_status(order_status, start_date, end_date)
+        #     return 
+        # elif message == "create_order":
+        #     self.create_order(user_id, ordered_products)
+        #     return
+        # elif message == "order_to_change":
+        #     order_change_type = "order_changed"
+        #     self.get_changeable_orders(order_change_type, start_date, end_date)
+        #     return 
+        # elif message == "order_changed":
+        #     self.send_product_list(order_id)
+        #     return
+        # elif message == "change_order":
+        #     self.change_order(order_id, ordered_products)
+        #     return 
+        # elif message == "order_to_cancel":
+        #     order_change_type = "order_canceled"
+        #     self.get_changeable_orders(order_change_type, start_date, end_date)
+        #     return
+        # elif message == "order_canceled":
+        #     self.cancel_order(order_id)
+        #     return 
+        is_precessed = process_message(self, message, data_from_client)
+        if is_precessed: return
 
-        print("order_id: ", order_id)
+        print("selected_order_id: ", selected_order_id)
         print("selected_order\n", selected_order)
         # 브라우저에서 주문 아이디 선택한 경우
-        if order_id:
+        if selected_order_id:
             orderbot_graph.update_state(config, {"orders": None})
                                                  
             message = f"selected_order: {selected_order}"
 
 
         # 사용자 확인 필요한 도구 사용 여부 확인 위한 플래그 변수
-        self.confirm_message = text_data_json.get("confirmMessage")
-        print("self.confirm_message: ", self.confirm_message)
-        self.tool_call_id = text_data_json.get("toolCallId")
+        # self.confirm_message = text_data_json.get("confirmMessage")
+        # print("self.confirm_message: ", self.confirm_message)
+        # self.tool_call_id = text_data_json.get("toolCallId")
 
         # 사용자 확인 필요한 도구 사용하지 않을 때의 출력
-        if "confirmMessage" not in text_data_json:
+        # if "confirmMessage" not in text_data_json:
+        if has_confirmation is None:
             output = orderbot_graph.invoke({"messages": ("user", message),
                                             "user_info": user_id,
                                             },
                                             config)
-            order_history = output.get("orders")
+            # order_history = output.get("orders")
         else:
             # 사용자 확인 필요한 도구 사용할 때의 출력
             print("-"*70)
@@ -127,7 +139,8 @@ class ChatConsumer(WebsocketConsumer):
                     {
                         "messages": [
                             ToolMessage(
-                                tool_call_id=self.tool_call_id,
+                                # tool_call_id=self.tool_call_id,
+                                tool_call_id=tool_call_id,
                                 content=f"API call denied by user. Reasoning: '{message}'. Cㄴontinue assisting, accounting for the user's input.",
                             )
                         ]
@@ -138,6 +151,7 @@ class ChatConsumer(WebsocketConsumer):
         print("model output\n", output)
         response = output["messages"][-1].content
         print("response\n", response)
+        order_history = output.get("orders")
         now = timezone.now()
         
         snapshot = orderbot_graph.get_state(config)
@@ -148,19 +162,28 @@ class ChatConsumer(WebsocketConsumer):
             print("-"*70)
             print("snapshot.next 존재")
             print("output['messages'][-1]\n",  output["messages"][-1])
-            self.confirmation_message = True
-            self.tool_call_id = output["messages"][-1].tool_calls[0]["id"]
+            # self.confirmation_message = True
+            # self.tool_call_id = output["messages"][-1].tool_calls[0]["id"]
+            has_confirmation = True
+            tool_call_id = output["messages"][-1].tool_calls[0]["id"]
             response = "작업을 승인하시려면 y를 입력하시고, 거부하신다면 변경 사유를 알려주세요!"
             
-            self.send(text_data=json.dumps(
-            {"user": self.user.username,
-             "message": response,
-             "datetime": now.isoformat(),
-             "confirm_message": self.confirmation_message,
-             "tool_call_id": self.tool_call_id,
-             },
-             ensure_ascii=False
-             ))
+            json_data = dict_to_json(
+                user=self.user.username, 
+                message=response,
+                confirm_message=has_confirmation,
+                tool_call_id=tool_call_id
+                )
+            # self.send(text_data=json.dumps(
+            # {"user": self.user.username,
+            #  "message": response,
+            #  "datetime": now.isoformat(),
+            #  "confirm_message": self.confirmation_message,
+            #  "tool_call_id": self.tool_call_id,
+            #  },
+            #  ensure_ascii=False
+            #  ))
+            self.send(text_data=json_data)
         # 사용자 확인 필요한 도구 사용하지 않는 경우
         else:
             print("snapshot.next 존재 X")
@@ -169,24 +192,35 @@ class ChatConsumer(WebsocketConsumer):
                 print("order_history 존재 시 처리 구간 진입")
                 print("order_history\n", order_history)
                 # 주문 선택하지 않은 경우. 반면 order_id 있다면 특정 주문 선택한 경우이고, 이때 response는 이를 바탕으로 어떤 처리 진행하고 model이 응답 생성한 경우.
-                if order_id is None:
+                if selected_order_id is None:
                     response = "지난 주문 내역은 아래와 같습니다."
-                self.send(text_data=json.dumps(
-                    {"user": self.user.username,
-                    "message": response,
-                    "datetime": now.isoformat(),
-                    "recent_orders": order_history, 
-                    },
-                ensure_ascii=False
-                ))
+                json_data = dict_to_json(
+                    user=self.user.username, 
+                    message=response, 
+                    recent_orders=order_history
+                    )
+                self.send(text_data=json_data)
+                # self.send(text_data=json.dumps(
+                #     {"user": self.user.username,
+                #     "message": response,
+                #     "datetime": now.isoformat(),
+                #     "recent_orders": order_history, 
+                #     },
+                # ensure_ascii=False
+                # ))
             else:
-                self.send(text_data=json.dumps(
-                    {"user": self.user.username,
-                    "message": response,
-                    "datetime": now.isoformat(),
-                    },
-                    ensure_ascii=False
-                    ))
+                json_data = dict_to_json(
+                    user=self.user.username, 
+                    message=response, 
+                    )
+                self.send(text_data=json_data)
+                # self.send(text_data=json.dumps(
+                #     {"user": self.user.username,
+                #     "message": response,
+                #     "datetime": now.isoformat(),
+                #     },
+                #     ensure_ascii=False
+                #     ))
                 
     def send_product_list(self, order_id=None):
         products = fetch_product_list2()
