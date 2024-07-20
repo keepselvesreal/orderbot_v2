@@ -1,19 +1,10 @@
 import json
 import uuid
-from datetime import datetime
 
 from channels.generic.websocket import WebsocketConsumer
-from django.utils import timezone
-from django.contrib.auth.models import User
-from decimal import Decimal
-from django.core.exceptions import ObjectDoesNotExist
-from django.db import transaction
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from langchain_core.messages import HumanMessage, ToolMessage
 
 from chain.langgraph_graphs import orderbot_graph
-from chain.langgraph_tools import fetch_product_list, fetch_product_list2
-from products.models import Product, Order, OrderStatus
 from .utilities import process_message, execute_compiled_graph, dict_to_json
 
 
@@ -117,7 +108,6 @@ class ChatConsumer(WebsocketConsumer):
                 confirm_message=has_confirmation,
                 tool_call_id=tool_call_id
                 )
-            
             self.send(text_data=json_data)
         # 사용자 확인 필요한 도구 사용하지 않는 경우
         else:
@@ -129,14 +119,9 @@ class ChatConsumer(WebsocketConsumer):
                 # 주문 선택하지 않은 경우. 반면 order_id 있다면 특정 주문 선택한 경우이고, 이때 response는 이를 바탕으로 어떤 처리 진행하고 model이 응답 생성한 경우.
                 if selected_order_id is None:
                     response = "지난 주문 내역은 아래와 같습니다."
-                json_data = dict_to_json(
-                    message=response, 
-                    recent_orders=order_history
-                    )
+                json_data = dict_to_json(message=response, recent_orders=order_history)
                 self.send(text_data=json_data)
             else:
-                json_data = dict_to_json(
-                    message=response, 
-                    )
+                json_data = dict_to_json(message=response)
                 self.send(text_data=json_data)
 

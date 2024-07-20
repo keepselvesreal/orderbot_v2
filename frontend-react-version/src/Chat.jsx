@@ -1,3 +1,4 @@
+// Chat.jsx
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { UserContext } from './UserContext';
 import { useWebSocket } from './useWebSocket'; 
@@ -27,9 +28,7 @@ const Chat = () => {
     if (socket) {
       socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        if (!data.datetime) {
-          data.datetime = new Date().toISOString();
-        }
+
         
         if (data.message) {
           setMessages((prevMessages) => [...prevMessages, data]);
@@ -75,8 +74,7 @@ const Chat = () => {
       const newMessage = {
         sender: user || 'Anonymous',
         userId: userId,
-        message,
-        datetime: new Date().toISOString()
+        message
       };
       console.log("currentConfirmMessage, currentToolCallId", currentConfirmMessage, )
 
@@ -395,7 +393,9 @@ const renderProductList = (products, containerId, orderId) => {
     return messages.map((msg, index) => {
       const isUserMessage = msg.sender === user;
       const name = isUserMessage ? user.username : '주문봇';
-      const datetime = new Date(msg.datetime).toLocaleString("ko-KR", { hour: "numeric", minute: "numeric", hour12: true });
+      console.log("msg.datetime: ", msg.datetime)
+      const datetime = new Date().toLocaleString("ko-KR", { hour: "numeric", minute: "numeric", hour12: true });
+      console.log("datetime", datetime)
 
       let content;
       switch (msg.type) {
@@ -411,7 +411,7 @@ const renderProductList = (products, containerId, orderId) => {
 
       return (
         <div key={index} className={`message ${isUserMessage ? 'me' : 'other'}`}>
-        <strong>{name}</strong>
+        <strong>{name} </strong>
         <span className='date'>{datetime}</span><br />
         {content}
         {msg.recent_orders && renderRecentOrders(msg.recent_orders)}
