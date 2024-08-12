@@ -25,7 +25,7 @@ from django.views.generic import TemplateView
 from accounts.views import UserDetailView, LogoutAPIView
 
 urlpatterns = [
-    # path('admin/', admin.site.urls),
+    path('admin/', admin.site.urls),
     # path("accounts/login/", auth_views.LoginView.as_view(), name="login"),
     # path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
     # path("chat/", include("chat.urls", namespace="chat")),
@@ -34,7 +34,7 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),  
     path('api/user/', UserDetailView.as_view(), name='user_detail'), 
     path('api/logout/', LogoutAPIView.as_view(), name='logout'), 
-    re_path(r'^.*', TemplateView.as_view(template_name='index.html')),
+    # re_path(r'^.*', TemplateView.as_view(template_name='index.html')),
 ]
 
 if settings.DEBUG:

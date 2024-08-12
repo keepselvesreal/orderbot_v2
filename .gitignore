@@ -1,11 +1,11 @@
 # Python 관련
+.python_version
 orderbot/.env
 orderbot/**/__pycache__/
 orerbot/db.sqlite3
 orerbot/static/
 orderbot/staticfiles/
 orderbot/media/
-orderbot/templates/
 
 # React 관련
 react-frontend/node_modules/

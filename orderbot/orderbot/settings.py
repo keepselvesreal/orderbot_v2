@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-t4c4!k*xrnch)5u$g&zaqxa^9hlt!=9!jj^y%o@8eu9ps^plii
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 
 # Application definition
@@ -153,6 +153,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # React 앱의 주소
+    "http://localhost",
 ]
 
 REST_FRAMEWORK = {
