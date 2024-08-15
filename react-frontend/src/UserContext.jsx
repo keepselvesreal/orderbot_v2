@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom'; 
+import { API_URL } from '/src/constants.js'; // API_URL 상수를 가져옵니다.
 
 const UserContext = createContext();
 
@@ -9,7 +10,6 @@ const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userId, setUserId] = useState(null);
   const navigate = useNavigate();
-
 
   const fetchCurrentUser = useCallback(async () => {
     const token = localStorage.getItem('accessToken');
@@ -20,7 +20,7 @@ const UserProvider = ({ children }) => {
     }
 
     try {
-      const response = await axios.get('http://127.0.0.1:8000/api/user/', {
+      const response = await axios.get(`${API_URL}/api/user/`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -54,15 +54,13 @@ const UserProvider = ({ children }) => {
     }
   }, [isAuthenticated, userId, navigate]);
 
-
   useEffect(() => {
     fetchCurrentUser();
   }, [fetchCurrentUser]);
 
-
   const login = async (username, password) => {
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/token/', {
+      const response = await axios.post(`${API_URL}/api/token/`, {
         username,
         password
       });
@@ -79,14 +77,12 @@ const UserProvider = ({ children }) => {
     }
   };
 
-
   const logout = () => {
     localStorage.removeItem('accessToken');
     setIsAuthenticated(false);
     setUser(null);
     setUserId(null);
   };
-
 
   const refreshUser = useCallback(async () => {
     try {
@@ -96,7 +92,7 @@ const UserProvider = ({ children }) => {
         return;
       }
 
-      const response = await axios.get('http://127.0.0.1:8000/api/user/', {
+      const response = await axios.get(`${API_URL}/api/user/`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -123,7 +119,6 @@ const UserProvider = ({ children }) => {
       console.error('Error refreshing current user:', error);
     }
   }, []);
-  
 
   return (
     <UserContext.Provider value={{ isAuthenticated, user, userId, login, logout, refreshUser }}>

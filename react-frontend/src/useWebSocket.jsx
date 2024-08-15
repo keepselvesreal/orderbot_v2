@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useContext, createContext } from 'react';
 import { UserContext } from './UserContext';
+import { API_URL, WS_URL } from '/src/constants.js'; // API_URL과 WS_URL 상수를 가져옵니다.
 
 const WebSocketContext = createContext(null);
 
@@ -11,7 +12,7 @@ export const WebSocketProvider = ({ children }) => {
   useEffect(() => {
     if (userId) {
       const token = localStorage.getItem('accessToken');
-      const url = `ws://127.0.0.1:8000/ws/chat/room/${userId}/?token=${token}`;
+      const url = `${WS_URL}/ws/chat/room/${userId}/?token=${token}`; // WS_URL을 사용하여 WebSocket URL 생성
 
       socketRef.current = new WebSocket(url);
 
