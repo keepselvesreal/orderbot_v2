@@ -25,15 +25,15 @@ class LogoutAPIView(APIView):
         except Exception as e:
             return Response({"error": "Invalid or expired token.", "details": str(e)}, status=400)
 
-from rest_framework.permissions import IsAuthenticated
+# from rest_framework.permissions import IsAuthenticated
 
-class UserView(APIView):
-    permission_classes = [IsAuthenticated]
+# class UserView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        user = request.user
-        return Response({
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
-        })
+#     def get(self, request):
+#         user = request.user
+#         return Response({
+#             'id': user.id,
+#             'username': user.username,
+#             'email': user.email,
+#         })
