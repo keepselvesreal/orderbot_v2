@@ -6,6 +6,7 @@ orerbot/db.sqlite3
 orerbot/static/
 orderbot/staticfiles/
 orderbot/media/
+venv
 
 # React 관련
 react-frontend/node_modules/
