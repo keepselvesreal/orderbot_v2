@@ -1,18 +1,16 @@
 name: Local CI/CD
-
 on:
   push:
     branches:
       - refactor/modularize
-
+      
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-
     - name: Trigger local deployment
       run: |
-        echo "Changes pushed to using-webhook branch. Triggering local deployment..."
+        echo "Changes pushed to refactor/modularize branch. Triggering local deployment..."
         curl -X POST ${{ secrets.NGROK_URL }}/deploy
