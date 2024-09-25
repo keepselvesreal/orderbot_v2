@@ -1,5 +1,5 @@
 from datetime import datetime
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from product.files import product_list
 
