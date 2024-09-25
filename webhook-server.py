@@ -6,7 +6,7 @@ app = Flask(__name__)
 @app.route('/deploy', methods=['POST'])
 def deploy():
     try:
-        print("Received deployment request!")
+        print("Received deployment request!!")
         subprocess.run(['git', 'pull', 'origin', 'refactor/modularize'], check=True)
         subprocess.run(['docker-compose', 'down'], check=True)
         subprocess.run(['docker-compose', 'up', '--build', '-d'], check=True)
