@@ -10,6 +10,7 @@ def deploy():
         subprocess.run(['git', 'pull', 'origin', 'refactor/modularize'], check=True)
         subprocess.run(['docker-compose', 'down'], check=True)
         subprocess.run(['docker-compose', 'up', '--build', '-d'], check=True)
+        print("every steps is gone through")
         return 'Deployment successful', 200
     except subprocess.CalledProcessError as e:
         return f'Deployment failed: {str(e)}', 500
