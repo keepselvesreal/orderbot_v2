@@ -3,7 +3,7 @@ name: Local CI/CD
 on:
   push:
     branches:
-      - using-webhook
+      - refactor/modularize
 
 jobs:
   deploy:
