@@ -27,9 +27,8 @@ def process_message(instance, message, data_from_client):
         get_order_by_status(instance, order_status, start_date, end_date)
         return True
     elif message == "create_order":
-        user_id = data_from_client.get("userId")
         ordered_products = data_from_client.get("orderedProducts")
-        create_order(instance, user_id, ordered_products)
+        create_order(instance, ordered_products)
         return True
     elif message == "order_to_change":
         order_change_type = "order_changed"

@@ -34,7 +34,8 @@ def get_all_orders(instance, start_date=None, end_date=None):
     print("get_all_orders 진입")
     print("startdate / enddate: ", f"{start_date} / {end_date}")
 
-    orders = Order.objects.all()
+    print("user_id: ", instance.user.id)
+    orders = Order.objects.filter(user=instance.user.id)
 
     if start_date and end_date:
         orders = orders.filter(created_at__date__range=[start_date, end_date])
@@ -54,7 +55,7 @@ def get_order_by_status(instance, order_status, start_date=None, end_date=None):
     print("get_order_by_status 진입")
     print("startdate / enddate: ", f"{start_date} / {end_date}")
 
-    orders = Order.objects.filter(order_status=order_status)
+    orders = Order.objects.filter(user=instance.user.id, order_status=order_status)
 
     if start_date and end_date:
         orders = orders.filter(created_at__date__range=[start_date, end_date])
@@ -83,7 +84,7 @@ def get_changeable_orders(instance, order_change_type, start_date=None, end_date
     else:
         message = "주문 취소가 가능한 주문 목록입니다."
 
-    orders = Order.objects.exclude(order_status="order_canceled")
+    orders = Order.objects.filter(user=instance.user.id).exclude(order_status="order_canceled")
 
     if start_date and end_date:
         orders = orders.filter(created_at__date__range=[start_date, end_date])
@@ -101,14 +102,14 @@ def get_changeable_orders(instance, order_change_type, start_date=None, end_date
     )
     instance.send(text_data=json_data)
 
-def create_order(instance, user_id, ordered_products):
+def create_order(instance, ordered_products):
     from .utilities import dict_to_json
     try:
         print("-"*70)
         print("create_order 진입")
         print("ordered_products\n", ordered_products)
 
-        user = User.objects.get(id=user_id)
+        user = User.objects.get(id=instance.user.id)
 
         with transaction.atomic():
             order = Order.objects.create(user=user)
