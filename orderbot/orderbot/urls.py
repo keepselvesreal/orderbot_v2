@@ -22,7 +22,7 @@ from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.views.generic import TemplateView
 
-from accounts.views import UserDetailView, LogoutAPIView
+from accounts.views import SignupView, UserDetailView, LogoutAPIView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -30,6 +30,7 @@ urlpatterns = [
     # path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
     # path("chat/", include("chat.urls", namespace="chat")),
 
+    path('api/signup/', SignupView.as_view(), name='signup'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),  
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),  
     path('api/user/', UserDetailView.as_view(), name='user_detail'), 

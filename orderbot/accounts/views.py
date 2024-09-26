@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import UserSerializer
+from .serializers import UserSerializer, SignupSerializer
 
 class UserDetailView(generics.RetrieveAPIView):
     serializer_class = UserSerializer
@@ -11,6 +11,24 @@ class UserDetailView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+    
+
+class SignupView(generics.CreateAPIView):
+    serializer_class = SignupSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        print("SignupView 진입")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        print(user)
+        
+        return Response({
+            "user": UserSerializer(user, context=self.get_serializer_context()).data,
+            "message": "User created successfully",
+        })
+    
 
 
 class LogoutAPIView(APIView):

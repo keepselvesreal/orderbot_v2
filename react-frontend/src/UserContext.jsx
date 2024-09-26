@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate, useLocation } from 'react-router-dom'; 
 import { API_URL } from '/src/constants.js'; // API_URL 상수를 가져옵니다.
 
 const UserContext = createContext();
@@ -10,8 +10,14 @@ const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userId, setUserId] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const publicRoutes = ['/login', '/signup'];
 
   const fetchCurrentUser = useCallback(async () => {
+    if (publicRoutes.includes(location.pathname)) {
+      return;
+    }
     const token = localStorage.getItem('accessToken');
     if (!token) {
       console.error('No access token found.');
@@ -64,6 +70,7 @@ const UserProvider = ({ children }) => {
         username,
         password
       });
+      console.log('Login successful:', response.data);
 
       localStorage.setItem('accessToken', response.data.access);
       setIsAuthenticated(true);

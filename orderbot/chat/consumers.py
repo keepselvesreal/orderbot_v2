@@ -24,6 +24,7 @@ class ChatConsumer(WebsocketConsumer):
     def connect(self):
         print("*"*77)
         print("connect")
+        print(f"sefl.scope: {self.scope}")
         self.user = self.scope["user"]
         print("self.user: ", self.user)
         self.confirmation_message = None
@@ -79,7 +80,7 @@ class ChatConsumer(WebsocketConsumer):
             else:
                 # 도구 사용 승인하지 않았을 때의 출력
                 message_object = ToolMessage(
-                    content=f"API call denied by user. Reasoning: '{message}'. Cㄴontinue assisting, accounting for the user's input.",
+                    content=f"API call denied by user. Reasoning: '{message}'. Continue assisting, accounting for the user's input.",
                     tool_call_id=tool_call_id,
                 )
                 output = execute_compiled_graph(
