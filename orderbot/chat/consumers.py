@@ -8,26 +8,23 @@ from graph.graphs import orderbot_graph
 from .utilities import process_message, execute_compiled_graph, dict_to_json
 
 
-thread_id = str(uuid.uuid4())
-config = {
-    "configurable": {
-        # Todo: user_id로 대체 
-        "passenger_id": "1089",
-        # Checkpoints are accessed by thread_id
-        "thread_id": thread_id,
-    }
-}
-
 class ChatConsumer(WebsocketConsumer):
-    SESSION_ID = "240606"
-
     def connect(self):
         print("*"*77)
         print("connect")
         print(f"sefl.scope: {self.scope}")
+    
         self.user = self.scope["user"]
         print("self.user: ", self.user)
-        
+        if not hasattr(self, 'thread_id'):
+            self.thread_id = str(uuid.uuid4())
+        self.config = {
+            "configurable": {
+                "user": self.user.username,
+                "thread_id": self.thread_id,
+            }
+        }
+
         self.accept()
 
     def disconnect(self, close_code):
@@ -55,7 +52,7 @@ class ChatConsumer(WebsocketConsumer):
         print("selected_order\n", selected_order)
         # 브라우저에서 주문 아이디 선택한 경우
         if selected_order_id:
-            orderbot_graph.update_state(config, {"orders": None})
+            orderbot_graph.update_state(self.config, {"orders": None})
             message = f"selected_order: {selected_order}"
 
         # 사용자 확인 필요한 도구 사용 여부 확인 위한 플래그 변수
@@ -64,7 +61,7 @@ class ChatConsumer(WebsocketConsumer):
             # message_object = ("user", message)
             output = execute_compiled_graph(
                 compiled_graph=orderbot_graph, 
-                config=config, 
+                config=self.config, 
                 messages=message_object, 
                 user_info=user_id
                 )
@@ -75,7 +72,7 @@ class ChatConsumer(WebsocketConsumer):
             if message == "y":
                 # 도구 사용 승인 했을 때의 출력
                 print("승인 메시지 확인")
-                output = execute_compiled_graph(compiled_graph=orderbot_graph, config=config)
+                output = execute_compiled_graph(compiled_graph=orderbot_graph, config=self.config)
             else:
                 # 도구 사용 승인하지 않았을 때의 출력
                 message_object = ToolMessage(
@@ -83,7 +80,7 @@ class ChatConsumer(WebsocketConsumer):
                     tool_call_id=tool_call_id,
                 )
                 output = execute_compiled_graph(
-                    config=config,
+                    config=self.config,
                     message=message_object
                 )
                 
@@ -93,7 +90,7 @@ class ChatConsumer(WebsocketConsumer):
         print("response\n", response)
         order_history = output.get("orders")
 
-        snapshot = orderbot_graph.get_state(config)
+        snapshot = orderbot_graph.get_state(self.config)
 
         # 사용자 확인 필요한 도구 사용 경우
         if snapshot.next:
