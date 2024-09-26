@@ -27,8 +27,7 @@ class ChatConsumer(WebsocketConsumer):
         print(f"sefl.scope: {self.scope}")
         self.user = self.scope["user"]
         print("self.user: ", self.user)
-        self.confirmation_message = None
-        self.tool_call_id = None
+        
         self.accept()
 
     def disconnect(self, close_code):

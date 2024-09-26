@@ -20,6 +20,7 @@ django.setup()
 
 import chat.routing
 from chat.consumers import ChatConsumer
+from chat.middleware import JWTAuthMiddleware
 
 django_asgi_app = get_asgi_application()
 # django_asgi_app = WhiteNoise(django_asgi_app, root='/staticfiles')
@@ -31,7 +32,7 @@ websocket_urlpatterns = [
 print("asgi.py 진입")
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    "websocket": AuthMiddlewareStack(
+    "websocket": JWTAuthMiddleware(
         URLRouter(websocket_urlpatterns)
     ),
 })
