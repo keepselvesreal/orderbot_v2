@@ -5,6 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import UserSerializer, SignupSerializer
 
+
 class UserDetailView(generics.RetrieveAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -30,7 +31,6 @@ class SignupView(generics.CreateAPIView):
         })
     
 
-
 class LogoutAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -42,16 +42,3 @@ class LogoutAPIView(APIView):
             return Response({"message": "Successfully logged out."}, status=200)
         except Exception as e:
             return Response({"error": "Invalid or expired token.", "details": str(e)}, status=400)
-
-# from rest_framework.permissions import IsAuthenticated
-
-# class UserView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         return Response({
-#             'id': user.id,
-#             'username': user.username,
-#             'email': user.email,
-#         })

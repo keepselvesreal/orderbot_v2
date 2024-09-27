@@ -28,8 +28,3 @@ class State(TypedDict):
         ]
     order_id: int = None 
     orders: str = None
-    selected_order: str = None
-    product_presentation: bool = False
-    request_order_change_message: bool = False
-    request_approval_message: bool = False
-    task_completed: bool = False

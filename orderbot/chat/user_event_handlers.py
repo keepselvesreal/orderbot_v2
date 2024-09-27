@@ -1,6 +1,3 @@
-import json
-import uuid
-
 from django.utils import timezone
 from django.contrib.auth.models import User
 from decimal import Decimal
@@ -210,6 +207,7 @@ def cancel_order(instance, order_id):
     print("-"*70)
     print("cancel_order 진입")
     print("order_id: ", order_id)
+
     try:
         with transaction.atomic():
             order = Order.objects.select_for_update().get(id=order_id)
@@ -224,10 +222,12 @@ def cancel_order(instance, order_id):
             )
 
             if not created:
-                print(f"주문 {order_id}에 대한 취소 기록이 이미 존재합니다.")
+                message = f"주문 {order_id}에 대한 취소 기록이 이미 존재합니다."
+            else:
+                messsage = f"주문 {order_id}가 취소되었습니다."
 
             json_data = dict_to_json(
-                message=f"주문 {order_id}가 취소되었습니다.",
+                message=message,
                 order_status=order.order_status,
                 order_id=order_id
             )

@@ -74,43 +74,24 @@ class Assistant:
         add_state = {k: v for k, v in state.items() if k != "dialog_state"}
         
         return {**add_state, "messages": result}
-    
-
 #--------------------------------------------------------------------------------------------------------------------------------------
 # order inquiry related things
-
-
-
 inquiry_tools = [get_all_orders, get_change_order, get_cancel_order]
 order_inquiry_runnable = order_inquiry_prompt | llm.bind_tools(   
     inquiry_tools + [CompleteOrEscalate]
 )
 order_inquiry_runnable
 
-
-
-
 order_create_related_tools = [fetch_product_list, ToRequestOrderConfirmation]
 order_create_tool = [create_order]
 order_create_tools = order_create_related_tools + order_create_tool
 order_create_runnable = order_create_prompt | llm.bind_tools(order_create_tools)
-# order_create_runnable = order_create_prompt | llm.bind_tools(order_create_related_tools)
-# order_create_runnable = order_create_prompt | llm.bind_tools(order_create_tool)
-
 
 present_product_list_runnable = present_product_list_prompt | llm
 
-
-
 request_order_confirmation_runnable = request_order_confirmation_prompt | llm
-
-
 #--------------------------------------------------------------------------------------------------------------------------------------
 # order change related things
-
-
-
-# order_change_related_tools = [fetch_recent_order, ask_how_to_change, request_approval, change_order]
 order_change_related_tools = [fetch_recent_order, ToHowToChange, ToRequestOrderChangeConfirmation]
 order_change_tool = [change_order]
 order_change_tools = order_change_related_tools + order_change_tool
@@ -118,46 +99,23 @@ order_change_agent_with_tools = llm.bind_tools(tools=order_change_tools
                                                + [
                                                    CompleteOrEscalate,
                                                ])
-# order_change_runnable = order_change_prompt | llm
 order_change_runnable = order_change_prompt | order_change_agent_with_tools
-
-
-
 
 ask_order_runnable = ask_order_prompt | llm 
 
-
-
-
 ask_how_to_change_runnable =ask_how_to_change_prompt | llm 
 
-
-
-
 request_order_change_confirmation_runnable = request_order_change_confirmation_prompt | llm 
-
-
 #--------------------------------------------------------------------------------------------------------------------------------------
 # order cancel related things
-
-
-
 order_cancel_related_tools = [fetch_recent_order, ToRequestOrderCancelConfirmation]
 order_cancel_tool = [cancel_order]
 order_cancel_tools = order_cancel_related_tools + order_cancel_tool
 order_cancel_runnable = order_cancel_prompt | llm.bind_tools(order_cancel_tools)
 
-
-
-
 request_order_cancel_confirmation_runnable = request_order_cancel_confirmation_prompt | llm 
-
-
 #--------------------------------------------------------------------------------------------------------------------------------------
 # primary assistant related things
-
-
-
 primary_assistant_tools = [
     lookup_policy,
     fetch_product_list,

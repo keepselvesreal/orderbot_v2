@@ -334,13 +334,14 @@ const renderProductList = (products, containerId, orderId) => {
 
   // 서버에서 전달 받은 지난 주문 목록을 화면에 표시.
   const renderOrders = (orders, orderChangeType) => {
+    console.log("orders: ", orders)
     return (
       <div>
         <strong>주문 목록</strong>
         <ul className="list-group">
           {orders.map((order, index) => (
             <li key={index} className="list-group-item">
-              <strong>주문 {index + 1}</strong><br />
+              
               주문 번호: {order.id}<br />
               주문 상태: {getStatusText(order.order_status)}<br />
               생성일시: {new Date(order.created_at).toLocaleString('ko-KR')}<br />

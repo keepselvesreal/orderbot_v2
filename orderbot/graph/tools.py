@@ -57,6 +57,9 @@ def get_change_order(user_id):
     Returns:
         dict: A dictionary containing the details of the modified orders.
     """
+    print("-"*77)
+    print("get_change_order 진입")
+
     try:
         modified_orders = Order.objects.filter(user_id=user_id, order_status='order_changed')
         if not modified_orders.exists():
@@ -82,6 +85,9 @@ def get_cancel_order(user_id):
     Returns:
         dict: A dictionary containing the details of the canceled orders.
     """
+    print("-"*77)
+    print("get_cancel_order 진입")
+    
     try:
         canceled_orders = Order.objects.filter(user_id=user_id, order_status='order_canceled')
         if not canceled_orders.exists():
@@ -138,6 +144,9 @@ def lookup_policy(message: str):
     오염물이 다르나 오염이 확실한 반품의 경우
     기간내에 상품을 보내주시고 교환/반품이 어려울정도로 훼손되어 보내주셨을 경우
     """
+    print("-"*77)
+    print("lookup_policy 진입")
+
     return temp_info
 
 
@@ -147,6 +156,8 @@ def fetch_product_list():
     Fetchs a list of products.
     This function retrieves and displays a list of products. 
     """
+    print("-"*70)
+    print("fetch_product_list 진입")
 
     product_list = """
     [
@@ -278,6 +289,7 @@ def change_order(order_id: int, items: list):
     """
     print("="*70)
     print("change_order 진입")
+
     try:
         # Transaction을 사용하여 원자성을 보장
         with transaction.atomic():
@@ -320,6 +332,9 @@ def cancel_order(order_id):
     Returns:
         str: A message indicating the result of the cancellation process.
     """
+    print("="*70)
+    print("cancel_order 진입")
+
     try:
         with transaction.atomic():
             order = Order.objects.select_for_update().get(id=order_id)

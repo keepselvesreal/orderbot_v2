@@ -30,8 +30,8 @@ def route_to_workflow(
     """If we are in a delegated state, route directly to the appropriate assistant."""
     print("-"*77)
     print("route_to_workflow 진입")
-    
     print("state\n", state)
+
     dialog_state = state.get("dialog_state")
     if not dialog_state:
         return "primary_assistant"
@@ -92,12 +92,14 @@ def route_order_inquiry(
 def order_create_route(state):
     print("-"*70)
     print("order_create_route 진입")
+
     route = tools_condition(state)
     if route == END:
         return END
     
     tool_calls = state["messages"][-1].tool_calls
     print("tool_name_to_call: ", tool_calls[0]["name"])
+    
     did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
     if did_cancel:
         return "leave_skill"
@@ -110,6 +112,7 @@ def order_create_route(state):
 def order_create_related_tools_route(state):
      print("-"*70)
      print("order_create_tools_route 진입")
+
      tool_message = state["messages"][-1]
      tool_name = tool_message.name
      print("tool_message\n", tool_message)
@@ -124,12 +127,14 @@ def order_create_related_tools_route(state):
 def order_change_route(state):
     print("-"*70)
     print("order_change_route 진입")
+
     route = tools_condition(state)
     if route == END:
         return END
     
     tool_calls = state["messages"][-1].tool_calls
     print("tool_name_to_call: ", tool_calls[0]["name"])
+
     did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
     if did_cancel:
         return "leave_skill"
@@ -141,6 +146,7 @@ def order_change_route(state):
 def order_change_related_tools_route(state):
      print("-"*70)
      print("order_change_tools_route 진입")
+
      tool_message = state["messages"][-1]
      tool_name = tool_message.name
      print("tool_message\n", tool_message)
@@ -157,6 +163,7 @@ def order_change_related_tools_route(state):
 def order_cancel_route(state):
     print("-"*70)
     print("order_cancel_route 진입")
+
     route = tools_condition(state)
     if route == END:
         return END

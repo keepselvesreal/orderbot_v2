@@ -1,5 +1,3 @@
-from langgraph.prebuilt import tools_condition
-from langgraph.graph import END
 from langchain_core.messages import ToolMessage
 
 from .states import State
@@ -12,7 +10,6 @@ from .runnables import (
     request_order_cancel_confirmation_runnable
 )
 from .tools import (
-    CompleteOrEscalate,
     fetch_recent_order,
 )
 
@@ -22,7 +19,6 @@ def user_info(state: State):
     print("user_info 진입")
 
 
-# order_inquiry sub-graph에서 사용
 def pop_dialog_state(state: State) -> dict:
     """Pop the dialog stack and return to the main assistant.
 
@@ -123,7 +119,6 @@ def request_order_cancel_confirmation(state: State):
     response = request_order_cancel_confirmation_runnable.invoke({"messages": messages})
 
     return {"messages": response}
-
 
 
 def reset_state_without_messages(state: State):

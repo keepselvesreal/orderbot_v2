@@ -74,7 +74,6 @@ order_create_prompt = ChatPromptTemplate.from_messages(
           product_list=product_list)
 
 
-
 present_product_list_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", 

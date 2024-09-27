@@ -67,6 +67,5 @@ def execute_compiled_graph(compiled_graph, config, **kwargs):
 
 def dict_to_json(**kwargs):
     dict_data = kwargs
-    print(f"Dict Data: {dict_data}")  # 디버깅을 위해 추가
     json_data = json.dumps(dict_data, ensure_ascii=False)
     return json_data
