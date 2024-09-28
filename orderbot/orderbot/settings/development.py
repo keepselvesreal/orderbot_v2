@@ -15,3 +15,5 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost",
 ]
+
+print("enter production.py")

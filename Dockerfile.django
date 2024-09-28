@@ -29,7 +29,7 @@ RUN poetry install --no-dev
 COPY orderbot /app
 
 # Django 설정
-ENV DJANGO_SETTINGS_MODULE=orderbot.settings
+ENV DJANGO_SETTINGS_MODULE=orderbot.settings.production
 
 # 포트 설정
 EXPOSE 8000

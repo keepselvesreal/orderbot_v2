@@ -2,7 +2,7 @@ name: Local CI/CD
 on:
   push:
     branches:
-      - refactor/modularize
+      - refactor/settings-split
       
 jobs:
   deploy:
