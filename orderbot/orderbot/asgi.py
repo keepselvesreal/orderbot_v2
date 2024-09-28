@@ -13,7 +13,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 import django
 from django.urls import re_path
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'orderbot.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'orderbot.settings.development')
 django.setup()
 
 from chat.consumers import ChatConsumer
