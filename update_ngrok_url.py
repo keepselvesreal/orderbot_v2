@@ -17,8 +17,15 @@ def update_file(file_path, patterns, new_url):
     with open(file_path, 'r') as file:
         content = file.read()
 
+    # new_url에서 http:// 또는 https:// 제거한 도메인만 추출
+    domain_only = re.sub(r'^https?://', '', new_url)
+
     for pattern, replace_format in patterns:
-        content = re.sub(pattern, replace_format.format(new_url), content)
+        # ALLOWED_HOSTS에는 도메인만, CORS_ALLOWED_ORIGINS에는 https:// 포함된 URL 사용
+        if 'ALLOWED_HOSTS' in pattern:
+            content = re.sub(pattern, replace_format.format(domain_only), content)
+        else:
+            content = re.sub(pattern, replace_format.format(new_url), content)
 
     with open(file_path, 'w') as file:
         file.write(content)

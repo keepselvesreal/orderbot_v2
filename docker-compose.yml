@@ -13,17 +13,6 @@ services:
       python manage.py migrate &&
       uvicorn orderbot.asgi:application --host 0.0.0.0 --port 8000"
 
-  webhook:
-    build:
-      context: .
-      dockerfile: Dockerfile.webhook
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - WEBHOOK_PORT=9000
-    networks:
-      - orderbot-network
-
   react:
     container_name: orderbot_frontend
     build:
@@ -33,7 +22,6 @@ services:
       - orderbot-network
     depends_on:
       - django
-      - webhook
     ports:
       - "8080:8080"
 
