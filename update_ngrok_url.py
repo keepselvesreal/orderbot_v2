@@ -4,11 +4,11 @@ from dotenv import load_dotenv
 from github import Github
 
 # .env 파일의 경로를 지정하여 로드
-dotenv_path = os.path.join(os.path.dirname(__file__), '../orderbot/.env')
+dotenv_path = os.path.join(os.path.dirname(__file__), './orderbot/.env')
 load_dotenv(dotenv_path)
 
 # 환경 변수 사용
-ngrok_url = os.getenv('NGROK_URL')
+# ngrok_url = os.getenv('NGROK_URL')
 
 # 프로젝트 루트 디렉토리 설정
 PROJECT_ROOT = '/home/nadle/Grow/temp/orderbot_v2'
@@ -74,6 +74,9 @@ def main():
         (r'(CORS_ALLOWED_ORIGINS=.*?,).*', r'\1{}')
     ]
     update_file(env_path, env_patterns, new_url)
+
+    github_repo_url = "https://github.com/keepselvesreal/orderbot_v2"
+    update_github_secret(github_repo_url, "NGROK_URL", new_url)
 
     print("모든 파일이 성공적으로 업데이트되었습니다.")
 
