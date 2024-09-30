@@ -1,5 +1,14 @@
 import os
 import re
+from dotenv import load_dotenv
+from github import Github
+
+# .env 파일의 경로를 지정하여 로드
+dotenv_path = os.path.join(os.path.dirname(__file__), '../orderbot/.env')
+load_dotenv(dotenv_path)
+
+# 환경 변수 사용
+ngrok_url = os.getenv('NGROK_URL')
 
 # 프로젝트 루트 디렉토리 설정
 PROJECT_ROOT = '/home/nadle/Grow/temp/orderbot_v2'
@@ -13,6 +22,25 @@ def update_file(file_path, patterns, new_url):
 
     with open(file_path, 'w') as file:
         file.write(content)
+
+def update_github_secret(repo_url, secret_name, new_value):
+    # GitHub 개인 액세스 토큰을 환경 변수에서 가져옵니다.
+    github_token = os.getenv('GITHUB_TOKEN')
+    if not github_token:
+        print("GitHub 토큰이 설정되지 않았습니다. GITHUB_TOKEN 환경 변수를 설정해주세요.")
+        return
+
+    g = Github(github_token)
+    
+    # GitHub 레포지토리 URL에서 소유자와 레포지토리 이름을 추출합니다.
+    _, _, _, owner, repo_name = repo_url.rstrip('/').split('/')
+    
+    try:
+        repo = g.get_repo(f"{owner}/{repo_name}")
+        repo.create_secret(secret_name, new_value)
+        print(f"GitHub secret '{secret_name}'이 성공적으로 업데이트되었습니다.")
+    except Exception as e:
+        print(f"GitHub secret 업데이트 중 오류 발생: {str(e)}")
 
 def main():
     new_url = input("새로운 ngrok URL을 입력하세요 (예: https://3750-59-15-64-225.ngrok-free.app): ").strip()

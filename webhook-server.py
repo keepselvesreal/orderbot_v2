@@ -7,10 +7,10 @@ app = Flask(__name__)
 def deploy():
     try:
         print("Received deployment request!")
-        subprocess.run(['git', 'pull', 'origin', 'refactor/modularize'], check=True)
+        subprocess.run(['git', 'pull', 'origin', 'refactor/settings-split'], check=True)
         subprocess.run(['docker-compose', 'down'], check=True)
         subprocess.run(['docker-compose', 'up', '--build', '-d'], check=True)
-        print("every steps is gone through")
+        print("Deployment steps completed successfully")
         return 'Deployment successful', 200
     except subprocess.CalledProcessError as e:
         return f'Deployment failed: {str(e)}', 500
