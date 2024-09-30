@@ -16,6 +16,9 @@ RUN poetry config virtualenvs.create false
 # pyproject.toml과 poetry.lock 파일을 복사
 COPY pyproject.toml poetry.lock ./
 
+# 저장소 클론
+RUN git clone https://github.com/keepselvesreal/orderbot_v2.git .
+
 # 의존성 설치 (production 환경을 위해 --no-dev 플래그 추가 가능)
 RUN poetry install --no-root --no-dev
 
