@@ -5,7 +5,9 @@ DEBUG = False
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
-print("enter production.py")
+# CORS_ALLOW_ALL_ORIGINS = True 
+# CSRF_TRUSTED_ORIGINS = ['https://3cf2-59-15-156-167.ngrok-free.app']
+
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
