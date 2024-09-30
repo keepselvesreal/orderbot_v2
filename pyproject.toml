@@ -21,8 +21,6 @@ django-cors-headers = "^4.4.0"
 whitenoise = "^6.7.0"
 gunicorn = "^23.0.0"
 uvicorn = {extras = ["standard"], version = "^0.30.5"}
-ngrok = "^1.4.0"
-flask = "^3.0.3"
 
 
 [build-system]
