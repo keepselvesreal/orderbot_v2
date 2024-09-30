@@ -4,6 +4,9 @@ FROM python:3.10.5-slim-bullseye
 # 작업 디렉토리 설정
 WORKDIR /app
 
+# 시스템 패키지 업데이트 및 git 설치
+RUN apt-get update && apt-get install -y git
+
 # Poetry 설치 (Poetry 공식 설치 스크립트를 사용)
 RUN pip install --no-cache-dir poetry
 
