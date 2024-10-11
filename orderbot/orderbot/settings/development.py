@@ -2,7 +2,7 @@ from .base import *
 
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "localhost:8080"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 DATABASES = {
     'default': {
@@ -13,7 +13,4 @@ DATABASES = {
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
-    "http://localhost",
 ]
-
-print("enter production.py")

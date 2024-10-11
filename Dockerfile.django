@@ -1,11 +1,8 @@
-# Python 3.10.5 이미지를 기반으로 합니다
 FROM python:3.10.5-slim-bullseye
 
-# 작업 디렉토리 설정
 WORKDIR /app
 ENV PYTHONPATH "${PYTHONPATH}:/app" 
 
-# 시스템 의존성 설치
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -13,25 +10,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsqlite3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Poetry 설치
 RUN pip install poetry
 
-# 프로젝트 파일 복사
 COPY pyproject.toml poetry.lock /app/
 
-# Poetry 설정: 가상 환경 생성하지 않음
 RUN poetry config virtualenvs.create false
 
-# 의존성 설치
 RUN poetry install --no-dev
 
-# 프로젝트 파일 복사
 COPY orderbot /app
 
-# Django 설정
 ENV DJANGO_SETTINGS_MODULE=orderbot.settings.production
 
-# 포트 설정
 EXPOSE 8000
-
-# CMD ["uvicorn", "orderbot.asgi:application", "--host", "0.0.0.0", "--port", "8000"]
