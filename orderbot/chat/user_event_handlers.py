@@ -224,7 +224,7 @@ def cancel_order(instance, order_id):
             if not created:
                 message = f"주문 {order_id}에 대한 취소 기록이 이미 존재합니다."
             else:
-                messsage = f"주문 {order_id}가 취소되었습니다."
+                message = f"주문 {order_id}가 취소되었습니다."
 
             json_data = dict_to_json(
                 message=message,

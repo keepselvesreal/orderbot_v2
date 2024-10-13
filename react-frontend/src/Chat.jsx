@@ -169,7 +169,6 @@ const Chat = () => {
   const renderOrderDetails = (order) => {
     return (
       <div className='selected-order'>
-        <strong>선택한 주문</strong>
         <p>Order ID: {order.id}, Status: {order.order_status}, Created At: {order.created_at}</p>
         <ul>
           {order.items.map((item, i) => (

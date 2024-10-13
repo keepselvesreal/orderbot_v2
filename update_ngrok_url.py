@@ -50,8 +50,8 @@ def main():
     # django related variable updates
     env_path = os.path.join(PROJECT_ROOT, 'orderbot', '.env')
     env_patterns = [
-        (r'(ALLOWED_HOSTS=.*?,).*', r'\1{}'),
-        (r'(CORS_ALLOWED_ORIGINS=.*?,).*', r'\1{}')
+        (r'ALLOWED_HOSTS=.*', 'ALLOWED_HOSTS={}'),
+        (r'CORS_ALLOWED_ORIGINS=.*', 'CORS_ALLOWED_ORIGINS=http://localhost:8080,{}')
     ]
     update_file(env_path, env_patterns, new_url)
 
