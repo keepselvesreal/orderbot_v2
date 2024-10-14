@@ -1,3 +1,17 @@
-/db.sqlite3
-/venv
-__pycache__/
+# Python 관련
+.python-version
+orderbot/.env
+orderbot/**/__pycache__/
+orerbot/db.sqlite3
+orerbot/static/
+orderbot/staticfiles/
+orderbot/media/
+venv
+
+# React 관련
+react-frontend/node_modules/
+react-frontend/dist/
+# .env.local
+# .env.development.local
+# .env.test.local
+# .env.production.local
