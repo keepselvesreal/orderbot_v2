@@ -4,12 +4,12 @@ import Login from './Login';
 const Navbar = ({ isAuthenticated, onLogout, onSignIn }) => {
   const handleLogout = (e) => {
     e.preventDefault();
-    onLogout(); // 전달된 onLogout 함수 호출
+    onLogout();
   };
 
   const handleSignIn = (e) => {
     e.preventDefault();
-    onSignIn(); // 전달된 onSignIn 함수 호출하여 로그인 페이지 표시 여부 토글
+    onSignIn();
   };
 
   return (
